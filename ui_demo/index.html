@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#6C5CE7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Automatic College Timetable Generator — conflict-free scheduling.">
+    <title>ScheduleX — Smart Timetable Generator</title>
+    <!-- Google Fonts for modern typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./style.css">
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+<!-- SVG gradient definitions used by generate-page progress ring -->
+<svg width="0" height="0" style="position:absolute">
+    <defs>
+        <linearGradient id="genGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stop-color="#7C6EF5"/>
+            <stop offset="100%" stop-color="#00cec9"/>
+        </linearGradient>
+    </defs>
+</svg>
+    <style>
+        #login-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #0a0a10;
+            background-image:
+                radial-gradient(ellipse at 20% 20%, rgba(124,110,245,0.15) 0%, transparent 55%),
+                radial-gradient(ellipse at 80% 80%, rgba(0,206,201,0.09) 0%, transparent 55%);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .login-card {
+            background: rgba(14, 14, 22, 0.92);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.09);
+            padding: 40px;
+            border-radius: 20px;
+            width: 350px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .login-card h2 { margin-bottom: 25px; color: #fff; }
+        .login-card input {
+            width: 100%;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 16px; /* prevent iOS auto-zoom on focus */
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+        }
+        .login-card button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .auth-toggle {
+            margin-top: 15px;
+            display: block;
+            color: #a0a0ff;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: underline;
+        }
+        .auth-toggle:hover { color: #fff; }
+    </style>
+    
+    <div id="login-overlay">
+        <div class="login-card glass-card" id="login-form-box">
+            <div class="tabs" style="margin-bottom: 20px; display: flex; justify-content: space-between;">
+                <button class="tab-btn active" id="tab-teacher-login" style="width: 48%; padding: 8px;">Teacher Login</button>
+                <button class="tab-btn" id="tab-student-login" style="width: 48%; padding: 8px;">Student Login</button>
+            </div>
+            <h2 id="login-title"><i class="fa-solid fa-chalkboard-user"></i> Teacher Gateway</h2>
+            <input type="text" id="login-username" placeholder="Teacher Username" />
+            <input type="password" id="login-password" placeholder="Password" />
+            <button class="btn-primary" id="submit-login-btn">Secure Sign In</button>
+            <span class="auth-toggle" id="show-register-btn">Don't have an account? Sign Up</span>
+            <div id="login-error" style="color: #ff4d4d; margin-top: 15px; display: none;">Invalid internal credentials!</div>
+        </div>
+        
+        <div class="login-card glass-card" id="register-form-box" style="display: none;">
+            <h2><i class="fa-solid fa-user-plus"></i> Register Account</h2>
+            <input type="text" id="reg-username" placeholder="New Username" />
+            <input type="password" id="reg-password" placeholder="Secure Password" />
+            <input type="password" id="reg-password-confirm" placeholder="Confirm Password" />
+            
+            <select id="reg-role" style="width: 100%; margin-bottom: 15px; border-radius: 8px; padding: 12px; font-size: 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: white;">
+                <option value="student" style="color: black;">Register As: Student (Read-Only)</option>
+                <option value="teacher" style="color: black;">Register As: Teacher (Admin Access)</option>
+            </select>
+            
+            <button class="btn-primary" id="submit-reg-btn">Create Account</button>
+            <span class="auth-toggle" id="show-login-btn">Already have an account? Sign In</span>
+            <div id="reg-error" style="color: #ff4d4d; margin-top: 15px; display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="app-container hidden" id="main-app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-badge">S<span class="logo-x-char">X</span></div>
+                <div class="logo-wordmark">Schedule<span class="logo-x-char">X</span></div>
+            </div>
+            <ul class="nav-links">
+                <li class="active" data-target="dashboard-page">
+                    <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
+                </li>
+                <li data-target="add-data-page">
+                    <i class="fa-solid fa-database"></i><span>Add Data</span>
+                </li>
+                <li data-target="generate-page">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i><span>Generate</span>
+                </li>
+                <li data-target="view-timetable-page">
+                    <i class="fa-solid fa-table"></i><span>Timetable</span>
+                </li>
+                <li data-target="history-page">
+                    <i class="fa-solid fa-clock-rotate-left"></i><span>History</span>
+                </li>
+                <li data-target="attendance-page" id="attendance-nav-item">
+                    <i class="fa-solid fa-clipboard-user"></i><span>Attendance</span>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; margin-bottom: 30px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                <h1 id="page-title">ScheduleX</h1>
+                <div class="header-actions" style="display: flex; align-items: center; gap: 20px;">
+                    <div class="user-profile" id="user-profile-display" style="display: flex; align-items: center; gap: 8px; font-weight: 500;">
+                        <i class="fa-solid fa-circle-user" style="font-size: 1.2rem;"></i> <span id="display-username">Administrator</span>
+                    </div>
+                    <button id="admin-logout-btn" class="btn-danger" style="display: flex; align-items: center; gap: 8px; padding: 8px 15px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+                    </button>
+                </div>
+            </header>
+
+            <div class="page-content">
+                <!-- Dashboard Page -->
+                <section id="dashboard-page" class="page active">
+
+                    <!-- ── Hero Banner ── -->
+                    <div class="dash-hero glass-card">
+                        <div class="dash-orb dash-orb-1"></div>
+                        <div class="dash-orb dash-orb-2"></div>
+                        <div class="dash-hero-text">
+                            <div class="dash-pill">✦ Smart Scheduling</div>
+                            <h1>Welcome to <span class="dash-brand">Schedule<span class="dash-x">X</span></span></h1>
+                            <p>AI-powered timetables that eliminate conflicts, balance workloads, and keep every batch on track.</p>
+                        </div>
+                        <div class="dash-hero-art">
+                            <div class="dash-ring dash-ring-1"></div>
+                            <div class="dash-ring dash-ring-2"></div>
+                            <div class="dash-ring dash-ring-3"></div>
+                            <i class="fa-solid fa-calendar-check dash-hero-icon"></i>
+                        </div>
+                    </div>
+
+                    <!-- ── Stat Cards ── -->
+                    <div class="stats-grid">
+                        <div class="stat-card glass-card stat-purple">
+                            <div class="stat-icon-wrap">
+                                <i class="fa-solid fa-chalkboard-user"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>Teachers</h3>
+                                <p id="stat-teachers">0</p>
+                                <span class="stat-sub">registered faculty</span>
+                            </div>
+                            <div class="stat-glow"></div>
+                        </div>
+                        <div class="stat-card glass-card stat-cyan">
+                            <div class="stat-icon-wrap">
+                                <i class="fa-solid fa-book-open"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>Subjects</h3>
+                                <p id="stat-subjects">0</p>
+                                <span class="stat-sub">including labs</span>
+                            </div>
+                            <div class="stat-glow"></div>
+                        </div>
+                        <div class="stat-card glass-card stat-pink">
+                            <div class="stat-icon-wrap">
+                                <i class="fa-solid fa-layer-group"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>Classes</h3>
+                                <p id="stat-classes">0</p>
+                                <span class="stat-sub">active sections</span>
+                            </div>
+                            <div class="stat-glow"></div>
+                        </div>
+                    </div>
+
+                    <!-- ── Quick Actions ── -->
+                    <div class="dash-actions-title">Quick Actions</div>
+                    <div class="dash-actions">
+                        <div class="dash-action-card" onclick="document.querySelector('[data-target=add-data-page]').click()">
+                            <div class="dac-icon" style="background:rgba(124,110,245,0.15);color:#a29bfe;">
+                                <i class="fa-solid fa-plus"></i>
+                            </div>
+                            <div class="dac-text">
+                                <strong>Add Data</strong>
+                                <span>Teachers, subjects &amp; classes</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right dac-arrow"></i>
+                        </div>
+                        <div class="dash-action-card" onclick="document.querySelector('[data-target=timetable-page]').click()">
+                            <div class="dac-icon" style="background:rgba(0,206,201,0.12);color:#00cec9;">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            </div>
+                            <div class="dac-text">
+                                <strong>Generate Timetable</strong>
+                                <span>Auto-schedule with AI</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right dac-arrow"></i>
+                        </div>
+                        <div class="dash-action-card" onclick="document.querySelector('[data-target=view-timetable-page]').click()">
+                            <div class="dac-icon" style="background:rgba(253,121,168,0.12);color:#fd79a8;">
+                                <i class="fa-solid fa-table"></i>
+                            </div>
+                            <div class="dac-text">
+                                <strong>View Timetable</strong>
+                                <span>Review &amp; export schedules</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right dac-arrow"></i>
+                        </div>
+                    </div>
+
+                    <!-- ── Info Strip ── -->
+                    <div class="dash-info-strip glass-card">
+                        <div class="dis-item">
+                            <i class="fa-solid fa-rotate-right" style="color:var(--secondary)"></i>
+                            <span>Batch rotation ensures every sub-batch covers all labs each week</span>
+                        </div>
+                        <div class="dis-divider"></div>
+                        <div class="dis-item">
+                            <i class="fa-solid fa-flask" style="color:var(--primary-light)"></i>
+                            <span>Set per-lab block size (1hr–3hr) in the Subjects tab</span>
+                        </div>
+                        <div class="dis-divider"></div>
+                        <div class="dis-item">
+                            <i class="fa-solid fa-pen-to-square" style="color:#fd79a8"></i>
+                            <span>Click ✏️ on any subject to update weekly hours instantly</span>
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- Add Data Page -->
+                <section id="add-data-page" class="page hidden">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="teachers-tab">Teachers</button>
+                        <button class="tab-btn" data-tab="subjects-tab">Subjects</button>
+                        <button class="tab-btn" data-tab="classes-tab">Classes</button>
+                        <button class="tab-btn" data-tab="times-tab">Times</button>
+                        <button class="tab-btn" data-tab="assign-tab">Assign</button>
+                    </div>
+
+                    <div class="tab-content">
+                        <!-- Teachers Tab -->
+                        <div id="teachers-tab" class="glass-card form-container active">
+                            <h3>Add Teachers</h3>
+                            <form id="teacher-form">
+                                <div class="input-group">
+                                    <label for="teacher-name">Teacher Name</label>
+                                    <input type="text" id="teacher-name" placeholder="e.g. Dr. Smith" required>
+                                </div>
+                                <button type="submit" class="btn-primary">Add Teacher</button>
+                            </form>
+                            <div class="list-container" id="teacher-list"></div>
+                        </div>
+
+                        <!-- Subjects Tab -->
+                        <div id="subjects-tab" class="glass-card form-container hidden">
+                            <h3>Add Subjects</h3>
+                            <form id="subject-form">
+                                <div class="input-group">
+                                    <label for="subject-name">Subject Name</label>
+                                    <input type="text" id="subject-name" placeholder="e.g. Mathematics" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="weekly-hours">Weekly Hours</label>
+                                    <input type="number" id="weekly-hours" min="1" max="10" placeholder="e.g. 4" required>
+                                </div>
+                                <div class="input-group checkbox-group" style="flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px;">
+                                    <input type="checkbox" id="is-lab" style="width: auto;">
+                                    <label for="is-lab" style="margin-bottom: 0;">Is this a Lab? (Requires 2 consecutive hours)</label>
+                                </div>
+                                <button type="submit" class="btn-primary">Add Subject</button>
+                            </form>
+                            <div class="list-container" id="subject-list"></div>
+                        </div>
+
+                        <!-- Classes Tab -->
+                        <div id="classes-tab" class="glass-card form-container hidden">
+                            <h3>Add Classes</h3>
+                            <div style="background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:0.85rem;color:rgba(220,220,235,0.6);">
+                                <i class="fa-solid fa-users-viewfinder" style="color:var(--primary);margin-right:6px;"></i>
+                                <b style="color:var(--primary);">Sub-Batch Mode:</b> After adding a class, click the <b>"Batches OFF"</b> badge next to it to enable 3 simultaneous sub-batches for lab sessions. Each batch will do a different lab at the same time. Requires at least 3 different lab subjects assigned to the class.
+                            </div>
+                            <form id="class-form">
+                                <div class="input-group">
+                                    <label for="class-name">Class Name</label>
+                                    <input type="text" id="class-name" placeholder="e.g. CS Year 1" required>
+                                </div>
+                                <button type="submit" class="btn-primary">Add Class</button>
+                            </form>
+                            <div class="list-container" id="class-list"></div>
+                        </div>
+
+                        <!-- Times Tab -->
+                        <div id="times-tab" class="glass-card form-container hidden">
+                            <h3>Add Time Slots</h3>
+                            <form id="time-form">
+                                <div class="input-group">
+                                    <label>Start Time</label>
+                                    <div class="time-picker-group">
+                                        <select id="start-hour" class="time-sel"></select>
+                                        <span class="time-colon">:</span>
+                                        <select id="start-min" class="time-sel"></select>
+                                        <select id="start-ampm" class="time-sel ampm-sel">
+                                            <option value="AM">AM</option>
+                                            <option value="PM">PM</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label>End Time</label>
+                                    <div class="time-picker-group">
+                                        <select id="end-hour" class="time-sel"></select>
+                                        <span class="time-colon">:</span>
+                                        <select id="end-min" class="time-sel"></select>
+                                        <select id="end-ampm" class="time-sel ampm-sel">
+                                            <option value="AM">AM</option>
+                                            <option value="PM">PM</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="input-group checkbox-group" style="flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px;">
+                                    <input type="checkbox" id="is-break" style="width: auto;">
+                                    <label for="is-break" style="margin-bottom: 0;">Is this a Break (e.g. Lunch)?</label>
+                                </div>
+                                <button type="submit" class="btn-primary">Add Time Slot</button>
+                            </form>
+                            <div class="list-container" id="time-list"></div>
+                        </div>
+
+                        <!-- Assign Tab -->
+                        <div id="assign-tab" class="glass-card form-container hidden">
+                            <h3>Assign Teacher to Subject</h3>
+                            <form id="assign-form">
+                                <div class="input-group">
+                                    <label for="assign-teacher">Select Teacher</label>
+                                    <select id="assign-teacher" required>
+                                        <option value="" disabled selected>Select a teacher...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="assign-subject">Select Subject</label>
+                                    <select id="assign-subject" required>
+                                        <option value="" disabled selected>Select a subject...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="assign-class">Select Class</label>
+                                    <select id="assign-class" required>
+                                        <option value="" disabled selected>Select a class...</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn-primary">Assign</button>
+                            </form>
+                            <div class="list-container" id="assignment-list"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Generate Page -->
+                <section id="generate-page" class="page hidden centered-page">
+                    <div class="glass-card generate-card">
+
+                        <!-- ambient orbs -->
+                        <div class="gen-orb gen-orb-1"></div>
+                        <div class="gen-orb gen-orb-2"></div>
+                        <div class="gen-orb gen-orb-3"></div>
+
+                        <div class="gen-icon-wrap">
+                            <div class="gen-halo gen-halo-1"></div>
+                            <div class="gen-halo gen-halo-2"></div>
+                            <div class="gen-halo gen-halo-3"></div>
+                            <i class="fa-solid fa-wand-magic-sparkles gen-center-icon"></i>
+                        </div>
+
+                        <h2 class="gen-title">Ready to Generate?</h2>
+                        <p class="gen-sub">Our algorithm finds the optimal schedule — conflict-free, batch-aware &amp; lab-rotation ready.</p>
+
+                        <button id="generate-btn" class="btn-primary btn-large gen-btn">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>Generate Timetable</span>
+                        </button>
+
+                        <div id="loading-container" class="hidden gen-loading">
+                            <div class="gen-progress-ring">
+                                <svg viewBox="0 0 60 60">
+                                    <circle class="gpr-track" cx="30" cy="30" r="26"/>
+                                    <circle class="gpr-bar"   cx="30" cy="30" r="26"/>
+                                </svg>
+                                <i class="fa-solid fa-gear gen-spin-icon"></i>
+                            </div>
+                            <p class="gen-loading-text">Optimizing schedules<span class="gen-dots"></span></p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Generation cinematic overlay (full-screen) -->
+                <div id="gen-overlay" class="gen-overlay hidden">
+                    <div class="gen-ov-ring gen-ov-ring-1"></div>
+                    <div class="gen-ov-ring gen-ov-ring-2"></div>
+                    <div class="gen-ov-ring gen-ov-ring-3"></div>
+                    <div class="gen-ov-content">
+                        <i class="fa-solid fa-wand-magic-sparkles gen-ov-icon"></i>
+                        <p class="gen-ov-text">Building your timetable…</p>
+                    </div>
+                </div>
+
+
+                <!-- View Timetable Page -->
+                <section id="view-timetable-page" class="page hidden">
+                    <div class="timetable-actions glass-card">
+                        <div class="action-group">
+                            <label for="view-class-select">Select Class: </label>
+                            <select id="view-class-select">
+                                <option value="all">Select a class first</option>
+                            </select>
+                        </div>
+                        <div class="export-group">
+                            <button class="btn-success" id="publish-timetable-btn"><i class="fa-solid fa-upload"></i> Publish for Students</button>
+                            <button class="btn-warning" id="edit-timetable-btn"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                            <button class="btn-primary" id="save-history-btn" style="margin-right: 15px;"><i class="fa-solid fa-bookmark"></i> Save to History</button>
+                            <button class="btn-secondary" id="export-pdf"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                            <button class="btn-secondary" id="export-excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
+                            <button class="btn-danger" id="reset-btn"><i class="fa-solid fa-rotate-right"></i> Reset</button>
+                        </div>
+                    </div>
+
+                    <div class="glass-card table-wrapper">
+                        <table id="timetable">
+                            <thead>
+                                <tr>
+                                    <th>Time / Day</th>
+                                    <th>Monday</th>
+                                    <th>Tuesday</th>
+                                    <th>Wednesday</th>
+                                    <th>Thursday</th>
+                                    <th>Friday</th>
+                                    <th>Saturday</th>
+                                </tr>
+                            </thead>
+                            <tbody id="timetable-body">
+                                <!-- Generated rows will go here -->
+                            </tbody>
+                        </table>
+                        <!-- Sub-batch legend (only visible when batch-lab cells are present) -->
+                        <div class="batch-legend" id="batch-legend" style="display:none;">
+                            <span class="batch-legend-title"><i class="fa-solid fa-users-viewfinder"></i> Sub-Batch Key:</span>
+                            <span class="batch-legend-item"><span class="batch-legend-dot" style="background:#7C6EF5;"></span> Batch 1</span>
+                            <span class="batch-legend-item"><span class="batch-legend-dot" style="background:#00cec9;"></span> Batch 2</span>
+                            <span class="batch-legend-item"><span class="batch-legend-dot" style="background:#fd79a8;"></span> Batch 3</span>
+                            <span style="color:rgba(220,220,235,0.35);font-size:0.75rem;margin-left:auto;">All 3 batches run simultaneously in different labs</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- History Page -->
+                <section id="history-page" class="page hidden">
+                    <div class="welcome-card glass-card">
+                        <h2>Saved Timetables History</h2>
+                        <p>View, restore, or delete completely generated timetables.</p>
+                    </div>
+                    <div class="glass-card table-wrapper" style="margin-top: 20px;">
+                        <table style="width: 100%; text-align: left;">
+                            <thead>
+                                <tr>
+                                    <th>Snapshot Name</th>
+                                    <th>Saved On</th>
+                                    <th style="width: 150px; text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-list-body">
+                                <!-- History items will render here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Attendance Page -->
+                <section id="attendance-page" class="page hidden">
+
+                    <!-- TEACHER VIEW -->
+                    <div id="att-teacher-view">
+                        <div class="tabs" id="att-main-tabs">
+                            <button class="tab-btn active" data-atab="att-take-tab">&#128203; Take Attendance</button>
+                            <button class="tab-btn" data-atab="att-records-tab">&#128196; Records</button>
+                            <button class="tab-btn" data-atab="att-report-tab">&#128202; Report</button>
+                            <button class="tab-btn" data-atab="att-manage-tab">&#9881; Setup</button>
+                        </div>
+
+                        <!-- TAKE ATTENDANCE (Simplified) -->
+                        <div id="att-take-tab" class="att-tab-panel">
+
+                            <!-- Daily quick form -->
+                            <div class="glass-card" id="att-quick-form">
+                                <h3 style="color:var(--primary);margin-bottom:20px;"><i class="fa-solid fa-clipboard-check"></i> Daily Attendance</h3>
+                                <div class="att-form-grid">
+                                    <div class="input-group"><label>Class / Division</label><select id="att-class-sel"><option value="" disabled selected>Select class...</option></select></div>
+                                    <div class="input-group"><label>Subject</label><select id="att-subj-sel"><option value="" disabled selected>Select subject...</option></select></div>
+                                    <div class="input-group"><label>Date</label><input type="date" id="att-date"></div>
+                                </div>
+                                <button class="btn-primary" id="att-start-btn"><i class="fa-solid fa-arrow-right"></i> Start Attendance</button>
+                            </div>
+
+                            <!-- First-time setup (only shown if no roster saved) -->
+                            <div class="glass-card" id="att-setup-card" style="display:none;margin-top:18px;">
+                                <h3 style="color:var(--secondary);margin-bottom:6px;"><i class="fa-solid fa-users-gear"></i> One-Time Class Setup</h3>
+                                <p style="color:rgba(220,220,235,0.5);font-size:0.88rem;margin-bottom:20px;">No students found for this class. Add them once — they'll be remembered forever!</p>
+                                <div id="att-setup-s1">
+                                    <div class="input-group" style="max-width:220px;">
+                                        <label>How many students?</label>
+                                        <input type="number" id="att-setup-count" min="1" max="300" placeholder="e.g. 40">
+                                    </div>
+                                    <button class="btn-primary" id="att-setup-next"><i class="fa-solid fa-arrow-right"></i> Enter Names</button>
+                                </div>
+                                <div id="att-setup-s2" class="hidden">
+                                    <p style="color:rgba(220,220,235,0.5);font-size:0.85rem;margin-bottom:12px;">Edit student names below (saved permanently for this class).</p>
+                                    <div id="att-setup-names-grid" class="att-names-grid" style="margin-bottom:16px;"></div>
+                                    <div class="att-step-btns">
+                                        <button class="btn-secondary" id="att-setup-back">&#8592; Back</button>
+                                        <button class="btn-primary" id="att-setup-save"><i class="fa-solid fa-floppy-disk"></i> Save &amp; Start</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Mark attendance (shown after students loaded) -->
+                            <div class="glass-card" id="att-mark-card" style="display:none;margin-top:18px;">
+                                <div class="att-hdr-row">
+                                    <div>
+                                        <h3 style="color:var(--primary);margin-bottom:4px;" id="att-mark-title">Mark Attendance</h3>
+                                        <p id="att-mark-subtitle" style="color:rgba(220,220,235,0.45);font-size:0.82rem;"></p>
+                                    </div>
+                                    <div class="att-counters">
+                                        <span class="att-ctr att-ctr-p"><i class="fa-solid fa-circle-check"></i> <b id="att-p-cnt">0</b> Present</span>
+                                        <span class="att-ctr att-ctr-a"><i class="fa-solid fa-circle-xmark"></i> <b id="att-a-cnt">0</b> Absent</span>
+                                        <span class="att-ctr att-ctr-l"><i class="fa-solid fa-clock"></i> <b id="att-l-cnt">0</b> Late</span>
+                                    </div>
+                                </div>
+                                <div class="att-quick">
+                                    <button class="btn-success att-qbtn" id="att-all-present"><i class="fa-solid fa-check-double"></i> All Present</button>
+                                    <button class="btn-danger att-qbtn" id="att-all-absent"><i class="fa-solid fa-xmark"></i> All Absent</button>
+                                </div>
+                                <div id="att-mark-grid" class="att-mark-grid"></div>
+                                <div class="att-step-btns" style="margin-top:20px;">
+                                    <button class="btn-secondary" id="att-mark-back">&#8592; Change</button>
+                                    <button class="btn-primary" id="att-save-btn"><i class="fa-solid fa-floppy-disk"></i> Save Attendance</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RECORDS -->
+                        <div id="att-records-tab" class="att-tab-panel hidden">
+                            <div class="att-filter-bar glass-card">
+                                <div class="input-group" style="margin-bottom:0;min-width:160px;"><label>Class</label><select id="att-flt-class"><option value="">All</option></select></div>
+                                <div class="input-group" style="margin-bottom:0;min-width:160px;"><label>Subject</label><select id="att-flt-subj"><option value="">All</option></select></div>
+                                <div class="input-group" style="margin-bottom:0;min-width:140px;"><label>Date</label><input type="date" id="att-flt-date"></div>
+                                <button class="btn-primary" id="att-flt-btn" style="align-self:flex-end;"><i class="fa-solid fa-filter"></i> Filter</button>
+                            </div>
+                            <div class="glass-card table-wrapper" style="margin-top:18px;">
+                                <table style="width:100%;text-align:left;">
+                                    <thead><tr>
+                                        <th>Date</th><th>Class</th><th>Subject</th>
+                                        <th style="text-align:center;">Total</th>
+                                        <th style="text-align:center;">Present</th>
+                                        <th style="text-align:center;">Absent</th>
+                                        <th style="text-align:center;">%</th>
+                                        <th style="text-align:center;">Publish</th>
+                                        <th style="text-align:center;width:100px;">Actions</th>
+                                    </tr></thead>
+                                    <tbody id="att-sessions-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- REPORT -->
+                        <div id="att-report-tab" class="att-tab-panel hidden">
+                            <div class="att-filter-bar glass-card">
+                                <div class="input-group" style="margin-bottom:0;min-width:160px;"><label>Class</label><select id="att-rpt-class"><option value="">All Classes</option></select></div>
+                                <div class="input-group" style="margin-bottom:0;min-width:160px;"><label>Subject</label><select id="att-rpt-subj"><option value="">All Subjects</option></select></div>
+                                <button class="btn-primary" id="att-rpt-btn" style="align-self:flex-end;"><i class="fa-solid fa-chart-bar"></i> Generate</button>
+                            </div>
+                            <div class="glass-card table-wrapper" style="margin-top:18px;">
+                                <table style="width:100%;text-align:left;">
+                                    <thead><tr>
+                                        <th>Student</th><th>Class</th><th>Subject</th>
+                                        <th style="text-align:center;">Sessions</th>
+                                        <th style="text-align:center;">Present</th>
+                                        <th style="text-align:center;">Absent</th>
+                                        <th style="text-align:center;">Late</th>
+                                        <th style="text-align:center;">Attendance %</th>
+                                    </tr></thead>
+                                    <tbody id="att-report-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- MANAGE/SETUP tab (independent from timetable) -->
+                        <div id="att-manage-tab" class="att-tab-panel hidden">
+                            <div class="glass-card" style="margin-bottom:18px;">
+                                <h3 style="color:var(--primary);margin-bottom:16px;"><i class="fa-solid fa-users-gear"></i> Manage Divisions &amp; Subjects</h3>
+                                <p style="color:rgba(220,220,235,0.5);font-size:0.88rem;margin-bottom:20px;">These are <b>independent</b> from the timetable. Add your classes/divisions and their subjects here once.</p>
+                                <!-- Add division -->
+                                <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;">
+                                    <div class="input-group" style="flex:1;min-width:180px;margin-bottom:0;"><label>New Division / Class</label><input type="text" id="att-new-div" placeholder="e.g. FY-A, Class 10-B"></div>
+                                    <button class="btn-primary" id="att-add-div-btn" style="align-self:flex-end;"><i class="fa-solid fa-plus"></i> Add Division</button>
+                                </div>
+                                <!-- Division list -->
+                                <div id="att-div-list"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STUDENT VIEW -->
+                    <div id="att-student-view" class="hidden">
+                        <div class="tabs" id="att-student-tabs">
+                            <button class="tab-btn active" data-stab="att-st-sessions">&#128196; Sessions</button>
+                            <button class="tab-btn" data-stab="att-st-report">&#128202; My Report</button>
+                        </div>
+
+                        <!-- Sessions list -->
+                        <div id="att-st-sessions" class="att-tab-panel">
+                            <div class="glass-card table-wrapper" style="margin-top:10px;">
+                                <table style="width:100%;text-align:left;">
+                                    <thead><tr><th>Date</th><th>Class</th><th>Subject</th><th>Teacher</th><th style="text-align:center;">Present</th><th style="text-align:center;">Total</th><th style="text-align:center;">Actions</th></tr></thead>
+                                    <tbody id="att-student-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- My Report -->
+                        <div id="att-st-report" class="att-tab-panel hidden">
+                            <div class="glass-card" style="margin-top:10px;">
+                                <h3 style="color:var(--primary);margin-bottom:6px;"><i class="fa-solid fa-chart-pie"></i> My Attendance Report</h3>
+                                <p style="color:rgba(220,220,235,0.5);font-size:0.88rem;margin-bottom:18px;">Enter your name exactly as the teacher recorded it to see your attendance.</p>
+                                <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+                                    <div class="input-group" style="flex:1;min-width:200px;margin-bottom:0;">
+                                        <label>Your Name</label>
+                                        <input type="text" id="att-my-name" placeholder="Enter name as teacher registered...">
+                                    </div>
+                                    <button class="btn-primary" id="att-my-report-btn" style="align-self:flex-end;"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+                                </div>
+                            </div>
+                            <div id="att-my-report-result" style="margin-top:18px;"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Cell Modal (Teacher Only) -->
+    <div id="edit-cell-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; background:rgba(0,0,0,0.55); align-items:center; justify-content:center;">
+        <div class="glass-card" style="max-width:420px; width:92%; padding:30px; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+            <h3 style="margin-bottom:8px; color:var(--primary);"><i class="fa-solid fa-pen-to-square"></i> Edit Cell</h3>
+            <p id="edit-cell-info" style="margin-bottom:20px; color:#636e72; font-size:0.88rem;"></p>
+            <div class="input-group">
+                <label for="edit-cell-select">Choose Assignment</label>
+                <select id="edit-cell-select"></select>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn-primary" id="edit-cell-apply" style="flex:1;">Apply</button>
+                <button class="btn-secondary" id="edit-cell-cancel" style="flex:1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Attendance Modal -->
+    <div id="att-edit-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:9998;background:rgba(0,0,0,0.65);overflow-y:auto;align-items:flex-start;justify-content:center;">
+        <div class="glass-card" style="max-width:620px;width:94%;margin:30px auto;padding:30px;border-radius:20px;">
+            <h3 style="color:var(--primary);margin-bottom:4px;"><i class="fa-solid fa-pen-to-square"></i> Edit Attendance</h3>
+            <p id="att-edit-info" style="color:rgba(220,220,235,0.5);font-size:0.85rem;margin-bottom:18px;"></p>
+            <div class="att-quick" style="margin-bottom:16px;">
+                <button class="btn-success att-qbtn" id="att-edit-all-p"><i class="fa-solid fa-check-double"></i> All Present</button>
+                <button class="btn-danger att-qbtn" id="att-edit-all-a"><i class="fa-solid fa-xmark"></i> All Absent</button>
+            </div>
+            <div id="att-edit-grid" class="att-mark-grid"></div>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button class="btn-primary" id="att-edit-save" style="flex:1;"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+                <button class="btn-secondary" id="att-edit-cancel" style="flex:1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Detail View Modal -->
+    <div id="att-view-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:9997;background:rgba(0,0,0,0.65);overflow-y:auto;align-items:flex-start;justify-content:center;">
+        <div class="glass-card" style="max-width:640px;width:94%;margin:30px auto;padding:30px;border-radius:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                <h3 style="color:var(--primary);"><i class="fa-solid fa-clipboard-user"></i> Attendance Sheet</h3>
+                <button id="att-view-close" style="background:none;border:none;color:rgba(220,220,235,0.5);font-size:1.4rem;cursor:pointer;">&#x2715;</button>
+            </div>
+            <p id="att-view-meta" style="color:rgba(220,220,235,0.5);font-size:0.85rem;margin-bottom:20px;"></p>
+            <div id="att-view-counters" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;"></div>
+            <div id="att-view-list" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+    </div>
+
+    <script src="./script.js"></script>
+</body>
+</html>
