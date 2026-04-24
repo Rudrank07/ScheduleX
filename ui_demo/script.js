@@ -61,7 +61,7 @@ function getLabWindows(slots, blockSize) {
 }
 
 
-const API_BASE = 'https://schedulex.onrender.com'; // UPDATE: replace with your actual Render URL after deployment
+const API_BASE = ''; // Relative URL — works on PythonAnywhere (same domain for frontend + backend)
 
 // Wrapper that automatically attaches the X-User-Id header to every request.
 // Login/register endpoints don't need it (userId will be null at that point).
