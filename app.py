@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from db_config import get_db_connection, setup_database
+from db_config import get_db_connection, setup_database, dict_cursor, _close
 import json
 import os
-import mysql.connector
+import psycopg2
+import psycopg2.extras
 
 app = Flask(__name__)
 # Enable CORS for all routes so the frontend can connect
@@ -65,17 +66,16 @@ def add_teacher():
         
     try:
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO teachers (name, user_id) VALUES (%s, %s)", (name, user_id))
+        cursor.execute("INSERT INTO teachers (name, user_id) VALUES (%s, %s) RETURNING id", (name, user_id))
+        new_id = cursor.fetchone()[0]
         conn.commit()
-        return jsonify({'success': True, 'message': 'Teacher added successfully', 'id': cursor.lastrowid}), 201
-    except mysql.connector.IntegrityError:
+        return jsonify({'success': True, 'message': 'Teacher added successfully', 'id': new_id}), 201
+    except psycopg2.IntegrityError:
         return jsonify({'error': 'Teacher already exists'}), 409
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/teachers', methods=['GET'])
 def get_teachers():
@@ -87,16 +87,14 @@ def get_teachers():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("SELECT * FROM teachers WHERE user_id = %s", (user_id,))
         teachers = cursor.fetchall()
         return jsonify(teachers), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/delete_teacher/<int:id>', methods=['DELETE'])
 def delete_teacher(id):
@@ -114,9 +112,7 @@ def delete_teacher(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 # ----------------- SUBJECT ENDPOINTS -----------------
 
@@ -148,19 +144,18 @@ def add_subject():
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO subjects (name, weekly_hours, is_lab, user_id) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO subjects (name, weekly_hours, is_lab, user_id) VALUES (%s, %s, %s, %s) RETURNING id",
             (name, weekly_hours, is_lab, user_id)
         )
+        new_id = cursor.fetchone()[0]
         conn.commit()
-        return jsonify({'success': True, 'message': 'Subject added successfully', 'id': cursor.lastrowid, 'is_lab': is_lab}), 201
-    except mysql.connector.IntegrityError:
+        return jsonify({'success': True, 'message': 'Subject added successfully', 'id': new_id, 'is_lab': is_lab}), 201
+    except psycopg2.IntegrityError:
         return jsonify({'error': 'Subject already exists'}), 409
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/subjects', methods=['GET'])
 def get_subjects():
@@ -172,16 +167,14 @@ def get_subjects():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("SELECT * FROM subjects WHERE user_id = %s", (user_id,))
         subjects = cursor.fetchall()
         return jsonify(subjects), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/delete_subject/<int:id>', methods=['DELETE'])
 def delete_subject(id):
@@ -199,9 +192,7 @@ def delete_subject(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/update_subject/<int:id>', methods=['PUT'])
 def update_subject(id):
@@ -232,9 +223,7 @@ def update_subject(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 # ----------------- CLASS ENDPOINTS -----------------
 
@@ -257,17 +246,16 @@ def add_class():
         
     try:
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO classes (class_name, user_id) VALUES (%s, %s)", (class_name, user_id))
+        cursor.execute("INSERT INTO classes (class_name, user_id) VALUES (%s, %s) RETURNING id", (class_name, user_id))
+        new_id = cursor.fetchone()[0]
         conn.commit()
-        return jsonify({'success': True, 'message': 'Class added successfully', 'id': cursor.lastrowid}), 201
-    except mysql.connector.IntegrityError:
+        return jsonify({'success': True, 'message': 'Class added successfully', 'id': new_id}), 201
+    except psycopg2.IntegrityError:
         return jsonify({'error': 'Class already exists'}), 409
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/classes', methods=['GET'])
 def get_classes():
@@ -279,16 +267,14 @@ def get_classes():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("SELECT * FROM classes WHERE user_id = %s", (user_id,))
         classes = cursor.fetchall()
         return jsonify(classes), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/delete_class/<int:id>', methods=['DELETE'])
 def delete_class(id):
@@ -306,9 +292,7 @@ def delete_class(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 # ----------------- ASSIGNMENT ENDPOINTS -----------------
 
@@ -338,18 +322,17 @@ def assign_teacher():
             INSERT INTO teacher_subject (teacher_id, subject_id, class_id, user_id) 
             VALUES (%s, %s, %s, %s)
         """, (teacher_id, subject_id, class_id, user_id))
+        new_id = cursor.fetchone()[0]
         conn.commit()
-        return jsonify({'success': True, 'message': 'Assigned successfully', 'id': cursor.lastrowid}), 201
-    except mysql.connector.IntegrityError as e:
+        return jsonify({'success': True, 'message': 'Assigned successfully', 'id': new_id}), 201
+    except psycopg2.IntegrityError as e:
         if "foreign key constraint fails" in str(e).lower():
             return jsonify({'error': 'Invalid teacher_id, subject_id, or class_id - record does not exist'}), 400
         return jsonify({'error': 'Assignment already exists or constraints violated', 'details': str(e)}), 409
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/teacher_subject', methods=['GET'])
 def get_teacher_subject():
@@ -361,7 +344,7 @@ def get_teacher_subject():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         query = """
             SELECT ts.id, ts.teacher_id, t.name as teacher_name, 
                    ts.subject_id, s.name as subject_name,
@@ -373,14 +356,12 @@ def get_teacher_subject():
             WHERE ts.user_id = %s
         """
         cursor.execute(query, (user_id,))
-        assignments = cursor.fetchall()
+        assignments = [dict(r) for r in cursor.fetchall()]
         return jsonify(assignments), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/delete_assignment/<int:id>', methods=['DELETE'])
 def delete_assignment(id):
@@ -398,9 +379,7 @@ def delete_assignment(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 # ----------------- TIME SLOTS ENDPOINTS -----------------
 
@@ -424,17 +403,16 @@ def add_time_slot():
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO time_slots (start_time, end_time, is_break, user_id) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO time_slots (start_time, end_time, is_break, user_id) VALUES (%s, %s, %s, %s) RETURNING id",
             (start_time, end_time, is_break, user_id)
         )
+        new_id = cursor.fetchone()[0]
         conn.commit()
-        return jsonify({'success': True, 'message': 'Time slot added', 'id': cursor.lastrowid}), 201
+        return jsonify({'success': True, 'message': 'Time slot added', 'id': new_id}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/time_slots', methods=['GET'])
 def get_time_slots():
@@ -446,16 +424,14 @@ def get_time_slots():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("SELECT * FROM time_slots WHERE user_id = %s ORDER BY start_time ASC", (user_id,))
         slots = cursor.fetchall()
         return jsonify(slots), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/delete_time_slot/<int:id>', methods=['DELETE'])
 def delete_time_slot(id):
@@ -473,9 +449,7 @@ def delete_time_slot(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 # ----------------- GENERATED TIMETABLES ENDPOINTS -----------------
 
@@ -489,7 +463,7 @@ def get_timetables():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("SELECT * FROM generated_timetables WHERE user_id = %s", (user_id,))
         records = cursor.fetchall()
         timetables = {}
@@ -499,9 +473,7 @@ def get_timetables():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/save_timetable', methods=['POST'])
 def save_timetable():
@@ -524,16 +496,14 @@ def save_timetable():
         cursor.execute("""
             INSERT INTO generated_timetables (class_name, grid_data, user_id) 
             VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE grid_data = %s
-        """, (class_name, grid_data_json, user_id, grid_data_json))
+            ON CONFLICT (class_name, user_id) DO UPDATE SET grid_data = EXCLUDED.grid_data
+        """, (class_name, grid_data_json, user_id))
         conn.commit()
         return jsonify({'success': True, 'message': 'Timetable saved successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/reset_timetables', methods=['DELETE'])
 def reset_timetables():
@@ -551,9 +521,7 @@ def reset_timetables():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 # ----------------- TIMETABLE HISTORY ENDPOINTS -----------------
 
@@ -566,7 +534,7 @@ def get_history():
     if not conn:
         return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute(
             "SELECT id, name, created_at FROM timetable_history WHERE user_id = %s ORDER BY created_at DESC",
             (user_id,)
@@ -578,9 +546,7 @@ def get_history():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/history/<int:id>', methods=['GET'])
 def get_history_by_id(id):
@@ -591,7 +557,7 @@ def get_history_by_id(id):
     if not conn:
         return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("SELECT data FROM timetable_history WHERE id = %s AND user_id = %s", (id, user_id))
         record = cursor.fetchone()
         if record:
@@ -600,9 +566,7 @@ def get_history_by_id(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/save_history', methods=['POST'])
 def save_history():
@@ -623,17 +587,16 @@ def save_history():
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO timetable_history (name, data, user_id) VALUES (%s, %s, %s)",
+            "INSERT INTO timetable_history (name, data, user_id) VALUES (%s, %s, %s) RETURNING id",
             (name, json_data, user_id)
         )
+        new_id = cursor.fetchone()[0]
         conn.commit()
-        return jsonify({'success': True, 'message': 'History saved successfully', 'id': cursor.lastrowid}), 201
+        return jsonify({'success': True, 'message': 'History saved successfully', 'id': new_id}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/delete_history/<int:id>', methods=['DELETE'])
 def delete_history(id):
@@ -651,9 +614,7 @@ def delete_history(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 # ----------------- AUTHENTICATION ENDPOINTS -----------------
 
@@ -671,7 +632,7 @@ def login():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute(
             "SELECT id, role FROM admins WHERE username = %s AND password = %s",
             (username, password)
@@ -685,9 +646,7 @@ def login():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -703,7 +662,7 @@ def register():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         # Check if username exists
         cursor.execute("SELECT id FROM admins WHERE username = %s", (username,))
         if cursor.fetchone():
@@ -713,23 +672,20 @@ def register():
         if role not in ['teacher', 'student']:
             role = 'student'
 
-        # Switch to regular cursor for INSERT so lastrowid works
         cursor.close()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO admins (username, password, role) VALUES (%s, %s, %s)",
+            "INSERT INTO admins (username, password, role) VALUES (%s, %s, %s) RETURNING id",
             (username, password, role)
         )
+        new_id = cursor.fetchone()[0]
         conn.commit()
-        new_id = cursor.lastrowid
         # Return id so the frontend can store it as loggedInUserId
         return jsonify({'success': True, 'message': 'Registered successfully', 'role': role, 'id': new_id}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 
 # ----------------- PUBLISH TIMETABLE (Teacher → Students) -----------------
@@ -754,16 +710,14 @@ def publish_timetable():
         cursor.execute("""
             INSERT INTO published_timetables (teacher_id, timetable_data)
             VALUES (%s, %s)
-            ON DUPLICATE KEY UPDATE timetable_data = %s, published_at = CURRENT_TIMESTAMP
-        """, (user_id, timetable_json, timetable_json))
+            ON CONFLICT (teacher_id) DO UPDATE SET timetable_data = EXCLUDED.timetable_data, published_at = CURRENT_TIMESTAMP
+        """, (user_id, timetable_json))
         conn.commit()
         return jsonify({'success': True, 'message': 'Timetable published successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 @app.route('/published_timetables', methods=['GET'])
 def get_published_timetables():
@@ -775,7 +729,7 @@ def get_published_timetables():
     if not conn:
         return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("SELECT teacher_id, timetable_data, published_at FROM published_timetables")
         rows = cursor.fetchall()
         result = []
@@ -789,9 +743,7 @@ def get_published_timetables():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+        _close(conn, cursor)
 
 
 
@@ -804,15 +756,15 @@ def get_attendance_sessions():
     conn = get_db_connection()
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("""
             SELECT a.id, a.date, a.total_students, a.created_at, a.is_published,
                    a.att_div_id, a.att_subject_id,
                    COALESCE(d.name, c.class_name, 'N/A') AS class_name,
                    COALESCE(ds.name, s.name, 'N/A')      AS subject_name,
-                   COALESCE(SUM(r.status='present'),0) AS present_count,
-                   COALESCE(SUM(r.status='absent'),0)  AS absent_count,
-                   COALESCE(SUM(r.status='late'),0)    AS late_count
+                   COALESCE(SUM(CASE WHEN r.status='present' THEN 1 ELSE 0 END),0) AS present_count,
+                   COALESCE(SUM(CASE WHEN r.status='absent' THEN 1 ELSE 0 END),0)  AS absent_count,
+                   COALESCE(SUM(CASE WHEN r.status='late' THEN 1 ELSE 0 END),0)    AS late_count
             FROM attendance_sessions a
             LEFT JOIN att_divisions    d  ON a.att_div_id     = d.id
             LEFT JOIN att_div_subjects ds ON a.att_subject_id = ds.id
@@ -831,7 +783,7 @@ def get_attendance_sessions():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/session', methods=['POST'])
 def create_attendance_session():
@@ -852,9 +804,9 @@ def create_attendance_session():
         cursor.execute("""
             INSERT INTO attendance_sessions
                 (date, class_id, subject_id, att_div_id, att_subject_id, total_students, user_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
         """, (data['date'], class_id, subject_id, att_div_id, att_subject_id, len(data['students']), user_id))
-        sid = cursor.lastrowid
+        sid = cursor.fetchone()[0]
         for st in data['students']:
             cursor.execute("""
                 INSERT INTO attendance_records (session_id, student_name, student_roll, status)
@@ -865,7 +817,7 @@ def create_attendance_session():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/session/<int:id>', methods=['GET'])
 def get_attendance_session(id):
@@ -874,7 +826,7 @@ def get_attendance_session(id):
     conn = get_db_connection()
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("""
             SELECT a.id, a.date, a.total_students, a.att_div_id, a.att_subject_id,
                    COALESCE(d.name, c.class_name, 'N/A') AS class_name,
@@ -895,7 +847,7 @@ def get_attendance_session(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/session/<int:id>', methods=['PUT'])
 def update_attendance_session(id):
@@ -923,7 +875,7 @@ def update_attendance_session(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/session/<int:id>', methods=['DELETE'])
 def delete_attendance_session(id):
@@ -939,7 +891,7 @@ def delete_attendance_session(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/report', methods=['GET'])
 def get_attendance_report():
@@ -948,7 +900,7 @@ def get_attendance_report():
     conn = get_db_connection()
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         filters, params = ["a.user_id=%s"], [user_id]
         if request.args.get('class_id'):   filters.append("a.class_id=%s");   params.append(request.args['class_id'])
         if request.args.get('subject_id'): filters.append("a.subject_id=%s"); params.append(request.args['subject_id'])
@@ -969,7 +921,7 @@ def get_attendance_report():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/sessions/public', methods=['GET'])
 def get_public_attendance():
@@ -979,7 +931,7 @@ def get_public_attendance():
     conn = get_db_connection()
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("""
             SELECT a.id, a.date, c.class_name, s.name AS subject_name, a.total_students,
                    adm.username AS teacher_name,
@@ -990,7 +942,7 @@ def get_public_attendance():
             JOIN subjects s ON a.subject_id=s.id
             JOIN admins adm ON a.user_id=adm.id
             LEFT JOIN attendance_records r ON r.session_id=a.id
-            WHERE a.is_published=1
+            WHERE a.is_published=TRUE
             GROUP BY a.id
             ORDER BY a.date DESC LIMIT 100
         """)
@@ -1000,7 +952,7 @@ def get_public_attendance():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 
 # ----------------- ATTENDANCE DIVISION ENDPOINTS -----------------
@@ -1012,12 +964,12 @@ def get_att_divisions():
     conn = get_db_connection()
     if not conn: return jsonify({'error':'DB failed'}), 500
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("SELECT id, name FROM att_divisions WHERE user_id=%s ORDER BY name", (user_id,))
         return jsonify(cursor.fetchall()), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/divisions', methods=['POST'])
 def add_att_division():
@@ -1030,12 +982,13 @@ def add_att_division():
     if not conn: return jsonify({'error':'DB failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO att_divisions (name, user_id) VALUES (%s,%s)", (data['name'].strip(), user_id))
+        cursor.execute("INSERT INTO att_divisions (name, user_id) VALUES (%s,%s) RETURNING id", (data['name'].strip(), user_id))
         conn.commit()
-        return jsonify({'success': True, 'id': cursor.lastrowid}), 201
+        new_id = cursor.fetchone()[0]
+        return jsonify({'success': True, 'id': new_id}), 201
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/division/<int:div_id>', methods=['DELETE'])
 def delete_att_division(div_id):
@@ -1050,7 +1003,7 @@ def delete_att_division(div_id):
         return jsonify({'success': True}), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/division/<int:div_id>/subjects', methods=['GET'])
 def get_div_subjects(div_id):
@@ -1059,12 +1012,12 @@ def get_div_subjects(div_id):
     conn = get_db_connection()
     if not conn: return jsonify({'error':'DB failed'}), 500
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("SELECT id, name FROM att_div_subjects WHERE div_id=%s AND user_id=%s ORDER BY name", (div_id, user_id))
         return jsonify(cursor.fetchall()), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/division/<int:div_id>/subjects', methods=['POST'])
 def add_div_subject(div_id):
@@ -1077,13 +1030,14 @@ def add_div_subject(div_id):
     if not conn: return jsonify({'error':'DB failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO att_div_subjects (div_id, name, user_id) VALUES (%s,%s,%s)",
+        cursor.execute("INSERT INTO att_div_subjects (div_id, name, user_id) VALUES (%s,%s,%s) RETURNING id",
                        (div_id, data['name'].strip(), user_id))
         conn.commit()
-        return jsonify({'success': True, 'id': cursor.lastrowid}), 201
+        new_id = cursor.fetchone()[0]
+        return jsonify({'success': True, 'id': new_id}), 201
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/division/<int:div_id>/subject/<int:sub_id>', methods=['DELETE'])
 def delete_div_subject(div_id, sub_id):
@@ -1098,7 +1052,7 @@ def delete_div_subject(div_id, sub_id):
         return jsonify({'success': True}), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 
 # ----------------- ROSTER ENDPOINTS -----------------
@@ -1111,13 +1065,13 @@ def get_class_roster(class_id):
     conn = get_db_connection()
     if not conn: return jsonify({'error':'Database connection failed'}), 500
     try:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, student_name, student_roll FROM class_students WHERE att_div_id=%s AND user_id=%s ORDER BY student_roll+0, id",
+        cursor = dict_cursor(conn)
+        cursor.execute("SELECT id, student_name, student_roll FROM class_students WHERE att_div_id=%s AND user_id=%s ORDER BY CASE WHEN student_roll ~ '^[0-9]+$' THEN student_roll::int ELSE 999999 END, id",
                        (class_id, user_id))
         return jsonify(cursor.fetchall()), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/roster/<int:class_id>', methods=['POST'])
 def save_class_roster(class_id):
@@ -1138,7 +1092,7 @@ def save_class_roster(class_id):
         return jsonify({'success': True, 'count': len(data['students'])}), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/roster/<int:class_id>/student/<int:sid>', methods=['DELETE'])
 def delete_roster_student(class_id, sid):
@@ -1153,7 +1107,7 @@ def delete_roster_student(class_id, sid):
         return jsonify({'success': True}), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 @app.route('/attendance/student-report', methods=['GET'])
 def student_attendance_report():
@@ -1165,20 +1119,20 @@ def student_attendance_report():
     conn = get_db_connection()
     if not conn: return jsonify({'error':'Database connection failed'}), 500
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("""
             SELECT s.name AS subject_name, c.class_name,
                    COUNT(*) AS total,
-                   SUM(r.status='present') AS present_count,
-                   SUM(r.status='absent')  AS absent_count,
-                   SUM(r.status='late')    AS late_count,
-                   ROUND(SUM(r.status='present')/COUNT(*)*100,1) AS pct,
+                   SUM(CASE WHEN r.status='present' THEN 1 ELSE 0 END) AS present_count,
+                   SUM(CASE WHEN r.status='absent' THEN 1 ELSE 0 END) AS absent_count,
+                   SUM(CASE WHEN r.status='late' THEN 1 ELSE 0 END) AS late_count,
+                   ROUND(SUM(CASE WHEN r.status='present' THEN 1 ELSE 0 END)::numeric/COUNT(*)*100,1) AS pct,
                    MAX(a.date) AS last_date
             FROM attendance_records r
             JOIN attendance_sessions a ON r.session_id=a.id
             JOIN subjects s ON a.subject_id=s.id
             JOIN classes  c ON a.class_id=c.id
-            WHERE r.student_name=%s AND a.is_published=1
+            WHERE r.student_name=%s AND a.is_published=TRUE
             GROUP BY a.subject_id, a.class_id ORDER BY c.class_name, s.name
         """, (name,))
         rows = cursor.fetchall()
@@ -1187,7 +1141,7 @@ def student_attendance_report():
         return jsonify({'name': name, 'report': rows}), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 
 @app.route('/attendance/session/<int:id>/public', methods=['GET'])
@@ -1198,7 +1152,7 @@ def get_public_session_detail(id):
     conn = get_db_connection()
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("""
             SELECT a.id, a.date, a.total_students, a.class_id, a.subject_id,
                    c.class_name, s.name AS subject_name, adm.username AS teacher_name
@@ -1206,18 +1160,18 @@ def get_public_session_detail(id):
             JOIN classes c ON a.class_id=c.id
             JOIN subjects s ON a.subject_id=s.id
             JOIN admins adm ON a.user_id=adm.id
-            WHERE a.id=%s AND a.is_published=1
+            WHERE a.id=%s AND a.is_published=TRUE
         """, (id,))
         session = cursor.fetchone()
         if not session: return jsonify({'error': 'Not found or not published'}), 404
         session['date'] = session['date'].strftime('%Y-%m-%d')
-        cursor.execute("SELECT * FROM attendance_records WHERE session_id=%s ORDER BY student_roll+0, id", (id,))
+        cursor.execute("SELECT * FROM attendance_records WHERE session_id=%s ORDER BY CASE WHEN student_roll ~ '^[0-9]+$' THEN student_roll::int ELSE 999999 END, id", (id,))
         session['records'] = cursor.fetchall()
         return jsonify(session), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 
 @app.route('/attendance/session/<int:id>/publish', methods=['POST'])
@@ -1228,7 +1182,7 @@ def toggle_publish_session(id):
     conn = get_db_connection()
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = dict_cursor(conn)
         cursor.execute("SELECT id, is_published FROM attendance_sessions WHERE id=%s AND user_id=%s", (id, user_id))
         row = cursor.fetchone()
         if not row: return jsonify({'error': 'Not found or unauthorized'}), 404
@@ -1239,9 +1193,10 @@ def toggle_publish_session(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if conn.is_connected(): cursor.close(); conn.close()
+        _close(conn, cursor)
 
 
 if __name__ == '__main__':
     # Run the server on port 5001, accessible locally.
-    app.run(debug=True, host='127.0.0.1', port=5001)
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=False, host='0.0.0.0', port=port)
