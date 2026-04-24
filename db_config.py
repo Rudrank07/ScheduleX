@@ -1,27 +1,14 @@
+import sqlite3
 import os
-import psycopg2
-import psycopg2.extras
-from dotenv import load_dotenv
 
-load_dotenv()
-
-# Render provides DATABASE_URL automatically
-DATABASE_URL = os.getenv("DATABASE_URL", "")
+DB_PATH = os.path.join(os.path.dirname(__file__), 'timetable.db')
 
 
 def get_db_connection():
-    """Returns a PostgreSQL connection using DATABASE_URL."""
-    try:
-        conn = psycopg2.connect(DATABASE_URL)
-        return conn
-    except Exception as e:
-        print(f"Error connecting to PostgreSQL: {e}")
-        return None
-
-
-def dict_cursor(conn):
-    """Returns a cursor that returns rows as dicts."""
-    return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
 
 
 def _close(conn, cursor):
@@ -32,162 +19,118 @@ def _close(conn, cursor):
 
 
 def setup_database():
-    """Creates all tables if they don't exist."""
-    print("Initializing database setup...")
+    print("Initializing SQLite database...")
     conn = get_db_connection()
-    if not conn:
-        print("Failed to connect to PostgreSQL. Check DATABASE_URL.")
-        return
     cursor = conn.cursor()
     try:
-        cursor.execute("""
+        cursor.executescript("""
             CREATE TABLE IF NOT EXISTS admins (
-                id SERIAL PRIMARY KEY,
-                username VARCHAR(100) UNIQUE NOT NULL,
-                password VARCHAR(100) NOT NULL,
-                role VARCHAR(20) DEFAULT 'teacher' CHECK (role IN ('teacher', 'student'))
-            )
-        """)
-        cursor.execute("INSERT INTO admins (username, password) VALUES ('admin', 'password123') ON CONFLICT DO NOTHING")
-
-        cursor.execute("""
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role TEXT DEFAULT 'teacher' CHECK (role IN ('teacher', 'student'))
+            );
+            INSERT OR IGNORE INTO admins (username, password) VALUES ('admin', 'password123');
             CREATE TABLE IF NOT EXISTS teachers (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                user_id INT NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
                 UNIQUE(name, user_id)
-            )
-        """)
-
-        cursor.execute("""
+            );
             CREATE TABLE IF NOT EXISTS subjects (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                weekly_hours INT NOT NULL,
-                is_lab BOOLEAN NOT NULL DEFAULT FALSE,
-                user_id INT NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                weekly_hours INTEGER NOT NULL,
+                is_lab INTEGER NOT NULL DEFAULT 0,
+                user_id INTEGER NOT NULL,
                 UNIQUE(name, user_id)
-            )
-        """)
-
-        cursor.execute("""
+            );
             CREATE TABLE IF NOT EXISTS classes (
-                id SERIAL PRIMARY KEY,
-                class_name VARCHAR(255) NOT NULL,
-                user_id INT NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                class_name TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
                 UNIQUE(class_name, user_id)
-            )
-        """)
-
-        cursor.execute("""
+            );
             CREATE TABLE IF NOT EXISTS teacher_subject (
-                id SERIAL PRIMARY KEY,
-                teacher_id INT NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
-                subject_id INT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
-                class_id INT REFERENCES classes(id) ON DELETE CASCADE,
-                user_id INT NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                teacher_id INTEGER NOT NULL,
+                subject_id INTEGER NOT NULL,
+                class_id INTEGER,
+                user_id INTEGER NOT NULL,
                 UNIQUE(teacher_id, subject_id, class_id)
-            )
-        """)
-
-        cursor.execute("""
+            );
             CREATE TABLE IF NOT EXISTS time_slots (
-                id SERIAL PRIMARY KEY,
-                start_time VARCHAR(10) NOT NULL,
-                end_time VARCHAR(10) NOT NULL,
-                is_break BOOLEAN NOT NULL,
-                user_id INT NOT NULL REFERENCES admins(id) ON DELETE CASCADE
-            )
-        """)
-
-        cursor.execute("""
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                start_time TEXT NOT NULL,
+                end_time TEXT NOT NULL,
+                is_break INTEGER NOT NULL,
+                user_id INTEGER NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS generated_timetables (
-                id SERIAL PRIMARY KEY,
-                class_name VARCHAR(100) NOT NULL,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                class_name TEXT NOT NULL,
                 grid_data TEXT NOT NULL,
-                user_id INT NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL,
                 UNIQUE(class_name, user_id)
-            )
-        """)
-
-        cursor.execute("""
+            );
             CREATE TABLE IF NOT EXISTS timetable_history (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                created_at TEXT DEFAULT (datetime('now')),
                 data TEXT NOT NULL,
-                user_id INT NOT NULL REFERENCES admins(id) ON DELETE CASCADE
-            )
-        """)
-
-        cursor.execute("""
+                user_id INTEGER NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS published_timetables (
-                id SERIAL PRIMARY KEY,
-                teacher_id INT NOT NULL UNIQUE REFERENCES admins(id) ON DELETE CASCADE,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                teacher_id INTEGER NOT NULL UNIQUE,
                 timetable_data TEXT NOT NULL,
-                published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        cursor.execute("""
+                published_at TEXT DEFAULT (datetime('now'))
+            );
             CREATE TABLE IF NOT EXISTS attendance_sessions (
-                id SERIAL PRIMARY KEY,
-                date DATE NOT NULL,
-                class_id INT REFERENCES classes(id) ON DELETE CASCADE,
-                subject_id INT REFERENCES subjects(id) ON DELETE CASCADE,
-                att_div_id INT,
-                att_subject_id INT,
-                total_students INT NOT NULL DEFAULT 0,
-                is_published BOOLEAN NOT NULL DEFAULT FALSE,
-                user_id INT NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        cursor.execute("""
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                class_id INTEGER,
+                subject_id INTEGER,
+                att_div_id INTEGER,
+                att_subject_id INTEGER,
+                total_students INTEGER NOT NULL DEFAULT 0,
+                is_published INTEGER NOT NULL DEFAULT 0,
+                user_id INTEGER NOT NULL,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
             CREATE TABLE IF NOT EXISTS attendance_records (
-                id SERIAL PRIMARY KEY,
-                session_id INT NOT NULL REFERENCES attendance_sessions(id) ON DELETE CASCADE,
-                student_name VARCHAR(100) NOT NULL,
-                student_roll VARCHAR(20) DEFAULT '',
-                status VARCHAR(10) DEFAULT 'absent' CHECK (status IN ('present', 'absent', 'late'))
-            )
-        """)
-
-        cursor.execute("""
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                student_name TEXT NOT NULL,
+                student_roll TEXT DEFAULT '',
+                status TEXT DEFAULT 'absent' CHECK (status IN ('present','absent','late'))
+            );
             CREATE TABLE IF NOT EXISTS class_students (
-                id SERIAL PRIMARY KEY,
-                class_id INT,
-                att_div_id INT,
-                student_name VARCHAR(100) NOT NULL,
-                student_roll VARCHAR(20) DEFAULT '',
-                user_id INT NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        cursor.execute("""
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                class_id INTEGER,
+                att_div_id INTEGER,
+                student_name TEXT NOT NULL,
+                student_roll TEXT DEFAULT '',
+                user_id INTEGER NOT NULL,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
             CREATE TABLE IF NOT EXISTS att_divisions (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
-                user_id INT NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        cursor.execute("""
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
             CREATE TABLE IF NOT EXISTS att_div_subjects (
-                id SERIAL PRIMARY KEY,
-                div_id INT NOT NULL REFERENCES att_divisions(id) ON DELETE CASCADE,
-                name VARCHAR(100) NOT NULL,
-                user_id INT NOT NULL REFERENCES admins(id) ON DELETE CASCADE
-            )
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                div_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                user_id INTEGER NOT NULL
+            );
         """)
-
         conn.commit()
-        print("All tables verified/created successfully.")
+        print("All tables ready.")
     except Exception as e:
-        print(f"Error creating tables: {e}")
+        print(f"Error: {e}")
         conn.rollback()
     finally:
         _close(conn, cursor)
