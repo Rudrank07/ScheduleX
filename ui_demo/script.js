@@ -1654,6 +1654,10 @@ document.getElementById('export-pdf').addEventListener('click', () => {
     wrapper.style.background = '#0a0a10';
     wrapper.style.color = '#dcdce8';
     wrapper.style.fontFamily = 'Inter, sans-serif';
+    // Must be in DOM for html2canvas to render correctly, but we hide it off-screen
+    wrapper.style.position = 'absolute';
+    wrapper.style.left = '-9999px';
+    wrapper.style.top = '-9999px';
     
     const title = document.createElement('h2');
     title.textContent = `Timetable: ${className}`;
@@ -1664,6 +1668,7 @@ document.getElementById('export-pdf').addEventListener('click', () => {
     
     const tableClone = document.getElementById('timetable').cloneNode(true);
     wrapper.appendChild(tableClone);
+    document.body.appendChild(wrapper);
     
     const opt = {
         margin:       0.5,
@@ -1673,7 +1678,9 @@ document.getElementById('export-pdf').addEventListener('click', () => {
         jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
     };
     
-    html2pdf().set(opt).from(wrapper).save();
+    html2pdf().set(opt).from(wrapper).save().then(() => {
+        document.body.removeChild(wrapper);
+    });
 });
 
 document.getElementById('export-excel').addEventListener('click', () => {
