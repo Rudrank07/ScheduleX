@@ -473,29 +473,47 @@ let currentLoginTab = 'teacher';
 
 const teacherTabBtn = document.getElementById('tab-teacher-login');
 const studentTabBtn = document.getElementById('tab-student-login');
-const loginTitle = document.getElementById('login-title');
+const adminTabBtn   = document.getElementById('tab-admin-login');
+const loginTitle    = document.getElementById('login-title');
 const loginUsername = document.getElementById('login-username');
-const loginError = document.getElementById('login-error');
+const loginError    = document.getElementById('login-error');
 
-if (teacherTabBtn && studentTabBtn) {
-    teacherTabBtn.addEventListener('click', () => {
-        currentLoginTab = 'teacher';
-        teacherTabBtn.classList.add('active');
-        studentTabBtn.classList.remove('active');
-        if (loginTitle) loginTitle.innerHTML = '<i class="fa-solid fa-chalkboard-user"></i> Teacher Gateway';
+function setLoginTab(tab) {
+    currentLoginTab = tab;
+    // Reset all tabs
+    [teacherTabBtn, studentTabBtn, adminTabBtn].forEach(b => b && b.classList.remove('active'));
+    if (loginError) loginError.style.display = 'none';
+
+    if (tab === 'teacher') {
+        teacherTabBtn && teacherTabBtn.classList.add('active');
+        if (loginTitle)    loginTitle.innerHTML = '<i class="fa-solid fa-chalkboard-user"></i> Teacher Gateway';
         if (loginUsername) loginUsername.placeholder = 'Teacher Username';
-        if (loginError) loginError.style.display = 'none';
-    });
-
-    studentTabBtn.addEventListener('click', () => {
-        currentLoginTab = 'student';
-        studentTabBtn.classList.add('active');
-        teacherTabBtn.classList.remove('active');
-        if (loginTitle) loginTitle.innerHTML = '<i class="fa-solid fa-user-graduate"></i> Student Gateway';
+        const showReg = document.getElementById('show-register-btn');
+        if (showReg) showReg.style.display = '';
+    } else if (tab === 'student') {
+        studentTabBtn && studentTabBtn.classList.add('active');
+        if (loginTitle)    loginTitle.innerHTML = '<i class="fa-solid fa-user-graduate"></i> Student Gateway';
         if (loginUsername) loginUsername.placeholder = 'Student Username';
-        if (loginError) loginError.style.display = 'none';
-    });
+        const showReg = document.getElementById('show-register-btn');
+        if (showReg) showReg.style.display = '';
+    } else if (tab === 'admin') {
+        adminTabBtn && adminTabBtn.classList.add('active');
+        if (adminTabBtn) adminTabBtn.style.cssText += 'background:rgba(253,203,110,0.15);color:#fdcb6e;border-color:rgba(253,203,110,0.5);';
+        if (loginTitle) {
+            loginTitle.innerHTML = '<i class="fa-solid fa-shield-halved" style="color:#fdcb6e"></i> Admin Panel';
+            loginTitle.style.color = '#fdcb6e';
+        }
+        if (loginUsername) loginUsername.placeholder = 'Admin Username';
+        // Hide "Sign Up" for admin tab — admins can't be self-registered
+        const showReg = document.getElementById('show-register-btn');
+        if (showReg) showReg.style.display = 'none';
+    }
 }
+
+if (teacherTabBtn) teacherTabBtn.addEventListener('click', () => setLoginTab('teacher'));
+if (studentTabBtn) studentTabBtn.addEventListener('click', () => setLoginTab('student'));
+if (adminTabBtn)   adminTabBtn.addEventListener('click',   () => setLoginTab('admin'));
+
 
 document.getElementById('submit-login-btn').addEventListener('click', async () => {
     const user = document.getElementById('login-username').value;
@@ -518,7 +536,9 @@ document.getElementById('submit-login-btn').addEventListener('click', async () =
         
         if (data.success) {
             const returnedRole = data.role || 'teacher';
-            if (returnedRole !== currentLoginTab) {
+
+            // Admin can log in from any tab — skip the tab check for admin role
+            if (returnedRole !== 'admin' && returnedRole !== currentLoginTab) {
                 errObj.innerText = `You are registered as a ${returnedRole}, not a ${currentLoginTab}!`;
                 errObj.style.display = 'block';
                 return;
@@ -527,17 +547,21 @@ document.getElementById('submit-login-btn').addEventListener('click', async () =
             localStorage.setItem('adminLoggedIn', 'true');
             localStorage.setItem('loggedInUser', user);
             localStorage.setItem('loggedInRole', returnedRole);
-            localStorage.setItem('loggedInUserId', data.id);  // store user id for data isolation
+            localStorage.setItem('loggedInUserId', data.id);
             document.getElementById('display-username').innerText = user;
             updateUserUI(user, returnedRole);
-            
+
             applyRoleRestrictions();
-            
+
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('main-app-container').classList.remove('hidden');
             errObj.style.display = 'none';
             showToast(`Welcome back, ${user}!`, 'success');
-            if (returnedRole === 'student') {
+
+            if (returnedRole === 'admin') {
+                loadInitialData();   // load dashboard data
+                loadAdminPage();     // also pre-load admin panel
+            } else if (returnedRole === 'student') {
                 loadPublishedTimetables();
             } else {
                 loadInitialData();

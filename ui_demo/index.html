@@ -83,9 +83,16 @@
     <div id="login-overlay">
         <div class="login-card glass-card" id="login-form-box">
             <div class="login-brand-logo">S<span style="color:rgba(255,255,255,0.7)">X</span></div>
-            <div class="tabs" style="margin-bottom: 20px; display: flex; justify-content: space-between;">
-                <button class="tab-btn active" id="tab-teacher-login" style="width: 48%; padding: 8px;">Teacher Login</button>
-                <button class="tab-btn" id="tab-student-login" style="width: 48%; padding: 8px;">Student Login</button>
+            <div class="tabs" style="margin-bottom: 20px; display: flex; justify-content: space-between; gap: 6px;">
+                <button class="tab-btn active" id="tab-teacher-login" style="flex:1; padding: 8px; font-size:0.85rem;">
+                    <i class="fa-solid fa-chalkboard-user"></i> Teacher
+                </button>
+                <button class="tab-btn" id="tab-student-login" style="flex:1; padding: 8px; font-size:0.85rem;">
+                    <i class="fa-solid fa-user-graduate"></i> Student
+                </button>
+                <button class="tab-btn" id="tab-admin-login" style="flex:1; padding: 8px; font-size:0.85rem; border-color:rgba(253,203,110,0.3);">
+                    <i class="fa-solid fa-shield-halved"></i> Admin
+                </button>
             </div>
             <h2 id="login-title"><i class="fa-solid fa-chalkboard-user"></i> Teacher Gateway</h2>
             <input type="text" id="login-username" placeholder="Teacher Username" />
