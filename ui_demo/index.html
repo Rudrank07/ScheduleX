@@ -718,55 +718,6 @@
                         </div>
                     </div>
                 </section>
-            </div>
-        </main>
-    </div>
-
-    <!-- Edit Cell Modal (Teacher Only) -->
-    <div id="edit-cell-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; background:rgba(0,0,0,0.55); align-items:center; justify-content:center;">
-        <div class="glass-card" style="max-width:420px; width:92%; padding:30px; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,0.4);">
-            <h3 style="margin-bottom:8px; color:var(--primary);"><i class="fa-solid fa-pen-to-square"></i> Edit Cell</h3>
-            <p id="edit-cell-info" style="margin-bottom:20px; color:#636e72; font-size:0.88rem;"></p>
-            <div class="input-group">
-                <label for="edit-cell-select">Choose Assignment</label>
-                <select id="edit-cell-select"></select>
-            </div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button class="btn-primary" id="edit-cell-apply" style="flex:1;">Apply</button>
-                <button class="btn-secondary" id="edit-cell-cancel" style="flex:1;">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit Attendance Modal -->
-    <div id="att-edit-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:9998;background:rgba(0,0,0,0.65);overflow-y:auto;align-items:flex-start;justify-content:center;">
-        <div class="glass-card" style="max-width:620px;width:94%;margin:30px auto;padding:30px;border-radius:20px;">
-            <h3 style="color:var(--primary);margin-bottom:4px;"><i class="fa-solid fa-pen-to-square"></i> Edit Attendance</h3>
-            <p id="att-edit-info" style="color:rgba(220,220,235,0.5);font-size:0.85rem;margin-bottom:18px;"></p>
-            <div class="att-quick" style="margin-bottom:16px;">
-                <button class="btn-success att-qbtn" id="att-edit-all-p"><i class="fa-solid fa-check-double"></i> All Present</button>
-                <button class="btn-danger att-qbtn" id="att-edit-all-a"><i class="fa-solid fa-xmark"></i> All Absent</button>
-            </div>
-            <div id="att-edit-grid" class="att-mark-grid"></div>
-            <div style="display:flex;gap:10px;margin-top:20px;">
-                <button class="btn-primary" id="att-edit-save" style="flex:1;"><i class="fa-solid fa-floppy-disk"></i> Save</button>
-                <button class="btn-secondary" id="att-edit-cancel" style="flex:1;">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Student Detail View Modal -->
-    <div id="att-view-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:9997;background:rgba(0,0,0,0.65);overflow-y:auto;align-items:flex-start;justify-content:center;">
-        <div class="glass-card" style="max-width:640px;width:94%;margin:30px auto;padding:30px;border-radius:20px;">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-                <h3 style="color:var(--primary);"><i class="fa-solid fa-clipboard-user"></i> Attendance Sheet</h3>
-                <button id="att-view-close" style="background:none;border:none;color:rgba(220,220,235,0.5);font-size:1.4rem;cursor:pointer;">&#x2715;</button>
-            </div>
-            <p id="att-view-meta" style="color:rgba(220,220,235,0.5);font-size:0.85rem;margin-bottom:20px;"></p>
-            <div id="att-view-counters" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;"></div>
-            <div id="att-view-list" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
-        </div>
-    </div>
 
     <!-- ══════════════════════════════════════════════
          REQUESTS PAGE (teacher + admin only)
@@ -859,6 +810,57 @@
 
         </div>
     </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Cell Modal (Teacher Only) -->
+    <div id="edit-cell-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; background:rgba(0,0,0,0.55); align-items:center; justify-content:center;">
+        <div class="glass-card" style="max-width:420px; width:92%; padding:30px; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+            <h3 style="margin-bottom:8px; color:var(--primary);"><i class="fa-solid fa-pen-to-square"></i> Edit Cell</h3>
+            <p id="edit-cell-info" style="margin-bottom:20px; color:#636e72; font-size:0.88rem;"></p>
+            <div class="input-group">
+                <label for="edit-cell-select">Choose Assignment</label>
+                <select id="edit-cell-select"></select>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn-primary" id="edit-cell-apply" style="flex:1;">Apply</button>
+                <button class="btn-secondary" id="edit-cell-cancel" style="flex:1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Attendance Modal -->
+    <div id="att-edit-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:9998;background:rgba(0,0,0,0.65);overflow-y:auto;align-items:flex-start;justify-content:center;">
+        <div class="glass-card" style="max-width:620px;width:94%;margin:30px auto;padding:30px;border-radius:20px;">
+            <h3 style="color:var(--primary);margin-bottom:4px;"><i class="fa-solid fa-pen-to-square"></i> Edit Attendance</h3>
+            <p id="att-edit-info" style="color:rgba(220,220,235,0.5);font-size:0.85rem;margin-bottom:18px;"></p>
+            <div class="att-quick" style="margin-bottom:16px;">
+                <button class="btn-success att-qbtn" id="att-edit-all-p"><i class="fa-solid fa-check-double"></i> All Present</button>
+                <button class="btn-danger att-qbtn" id="att-edit-all-a"><i class="fa-solid fa-xmark"></i> All Absent</button>
+            </div>
+            <div id="att-edit-grid" class="att-mark-grid"></div>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button class="btn-primary" id="att-edit-save" style="flex:1;"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+                <button class="btn-secondary" id="att-edit-cancel" style="flex:1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Detail View Modal -->
+    <div id="att-view-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:9997;background:rgba(0,0,0,0.65);overflow-y:auto;align-items:flex-start;justify-content:center;">
+        <div class="glass-card" style="max-width:640px;width:94%;margin:30px auto;padding:30px;border-radius:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                <h3 style="color:var(--primary);"><i class="fa-solid fa-clipboard-user"></i> Attendance Sheet</h3>
+                <button id="att-view-close" style="background:none;border:none;color:rgba(220,220,235,0.5);font-size:1.4rem;cursor:pointer;">&#x2715;</button>
+            </div>
+            <p id="att-view-meta" style="color:rgba(220,220,235,0.5);font-size:0.85rem;margin-bottom:20px;"></p>
+            <div id="att-view-counters" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;"></div>
+            <div id="att-view-list" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+    </div>
+
+
 
     <!-- ══════════════════════════════════════════════
          REGISTER PENDING APPROVAL STATE
