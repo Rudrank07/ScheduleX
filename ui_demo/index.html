@@ -9,7 +9,7 @@
     <meta name="description" content="Automatic College Timetable Generator — conflict-free scheduling.">
     <title>ScheduleX — Smart Timetable Generator</title>
     <!-- Google Fonts for modern typography -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./style.css">
@@ -82,6 +82,7 @@
     
     <div id="login-overlay">
         <div class="login-card glass-card" id="login-form-box">
+            <div class="login-brand-logo">S<span style="color:rgba(255,255,255,0.7)">X</span></div>
             <div class="tabs" style="margin-bottom: 20px; display: flex; justify-content: space-between;">
                 <button class="tab-btn active" id="tab-teacher-login" style="width: 48%; padding: 8px;">Teacher Login</button>
                 <button class="tab-btn" id="tab-student-login" style="width: 48%; padding: 8px;">Student Login</button>
@@ -119,7 +120,7 @@
                 <div class="logo-badge">S<span class="logo-x-char">X</span></div>
                 <div class="logo-wordmark">Schedule<span class="logo-x-char">X</span></div>
             </div>
-            <ul class="nav-links">
+            <ul class="nav-links" id="main-nav-links">
                 <li class="active" data-target="dashboard-page">
                     <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
                 </li>
@@ -138,7 +139,18 @@
                 <li data-target="attendance-page" id="attendance-nav-item">
                     <i class="fa-solid fa-clipboard-user"></i><span>Attendance</span>
                 </li>
+                <li data-target="admin-page" id="admin-nav-item" style="display:none;">
+                    <i class="fa-solid fa-shield-halved"></i><span>Admin</span>
+                </li>
             </ul>
+            <!-- Sidebar user info strip -->
+            <div class="sidebar-user-strip" id="sidebar-user-strip">
+                <div class="sidebar-avatar" id="sidebar-avatar-icon"><i class="fa-solid fa-user"></i></div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-username" id="sidebar-username-text">User</div>
+                    <div class="sidebar-role-badge role-teacher" id="sidebar-role-badge"><i class="fa-solid fa-chalkboard"></i> Teacher</div>
+                </div>
+            </div>
         </nav>
 
         <!-- Main Content Area -->
@@ -148,6 +160,7 @@
                 <div class="header-actions" style="display: flex; align-items: center; gap: 20px;">
                     <div class="user-profile" id="user-profile-display" style="display: flex; align-items: center; gap: 8px; font-weight: 500;">
                         <i class="fa-solid fa-circle-user" style="font-size: 1.2rem;"></i> <span id="display-username">Administrator</span>
+                        <span class="header-role-badge role-teacher" id="header-role-badge">Teacher</span>
                     </div>
                     <button id="admin-logout-btn" class="btn-danger" style="display: flex; align-items: center; gap: 8px; padding: 8px 15px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);">
                         <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
@@ -167,6 +180,10 @@
                             <div class="dash-pill">✦ Smart Scheduling</div>
                             <h1>Welcome to <span class="dash-brand">Schedule<span class="dash-x">X</span></span></h1>
                             <p>AI-powered timetables that eliminate conflicts, balance workloads, and keep every batch on track.</p>
+                            <div class="dash-clock">
+                                <div class="dash-clock-time" id="dash-clock-time">--:-- --</div>
+                                <div class="dash-clock-date" id="dash-clock-date"></div>
+                            </div>
                         </div>
                         <div class="dash-hero-art">
                             <div class="dash-ring dash-ring-1"></div>
@@ -208,6 +225,17 @@
                                 <h3>Classes</h3>
                                 <p id="stat-classes">0</p>
                                 <span class="stat-sub">active sections</span>
+                            </div>
+                            <div class="stat-glow"></div>
+                        </div>
+                        <div class="stat-card glass-card stat-amber">
+                            <div class="stat-icon-wrap">
+                                <i class="fa-solid fa-clock"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>Time Slots</h3>
+                                <p id="stat-timeslots">0</p>
+                                <span class="stat-sub">daily periods</span>
                             </div>
                             <div class="stat-glow"></div>
                         </div>
@@ -469,12 +497,12 @@
                             <thead>
                                 <tr>
                                     <th>Time / Day</th>
-                                    <th>Monday</th>
-                                    <th>Tuesday</th>
-                                    <th>Wednesday</th>
-                                    <th>Thursday</th>
-                                    <th>Friday</th>
-                                    <th>Saturday</th>
+                                    <th class="day-mon">Monday</th>
+                                    <th class="day-tue">Tuesday</th>
+                                    <th class="day-wed">Wednesday</th>
+                                    <th class="day-thu">Thursday</th>
+                                    <th class="day-fri">Friday</th>
+                                    <th class="day-sat">Saturday</th>
                                 </tr>
                             </thead>
                             <tbody id="timetable-body">
@@ -729,6 +757,103 @@
             <p id="att-view-meta" style="color:rgba(220,220,235,0.5);font-size:0.85rem;margin-bottom:20px;"></p>
             <div id="att-view-counters" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;"></div>
             <div id="att-view-list" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         ADMIN PAGE  (only visible to admin role)
+         ══════════════════════════════════════════════ -->
+    <section id="admin-page" class="page hidden" style="padding: 0 0 40px 0;">
+        <div style="display: grid; gap: 24px;">
+
+            <!-- ── Pending Signup Requests ── -->
+            <div class="glass-card" style="padding: 28px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+                    <div>
+                        <h2 style="margin:0; font-size:1.25rem; display:flex; align-items:center; gap:10px;">
+                            <i class="fa-solid fa-user-clock" style="color:#fdcb6e;"></i> Pending Signup Requests
+                        </h2>
+                        <p style="margin:6px 0 0; color:rgba(220,220,235,0.45); font-size:0.88rem;">Users waiting for approval to join ScheduleX</p>
+                    </div>
+                    <button class="btn-secondary" id="admin-refresh-btn" style="padding:8px 18px; display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-rotate"></i> Refresh
+                    </button>
+                </div>
+                <div id="admin-requests-list">
+                    <div class="admin-empty-state"><i class="fa-solid fa-inbox"></i><p>No pending requests</p></div>
+                </div>
+            </div>
+
+            <!-- ── Active Users ── -->
+            <div class="glass-card" style="padding: 28px;">
+                <div style="margin-bottom:20px;">
+                    <h2 style="margin:0; font-size:1.25rem; display:flex; align-items:center; gap:10px;">
+                        <i class="fa-solid fa-users" style="color:#a29bfe;"></i> Active Users
+                    </h2>
+                    <p style="margin:6px 0 0; color:rgba(220,220,235,0.45); font-size:0.88rem;">All approved members on the platform</p>
+                </div>
+                <div class="table-wrapper" style="overflow-x:auto;">
+                    <table id="admin-users-table" style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left; padding:10px 12px; color:rgba(220,220,235,0.5); font-size:0.78rem; letter-spacing:0.5px; border-bottom:1px solid rgba(255,255,255,0.07);">USERNAME</th>
+                                <th style="text-align:left; padding:10px 12px; color:rgba(220,220,235,0.5); font-size:0.78rem; letter-spacing:0.5px; border-bottom:1px solid rgba(255,255,255,0.07);">ROLE</th>
+                                <th style="text-align:center; padding:10px 12px; color:rgba(220,220,235,0.5); font-size:0.78rem; letter-spacing:0.5px; border-bottom:1px solid rgba(255,255,255,0.07);">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-users-tbody">
+                            <tr><td colspan="3" style="text-align:center; padding:32px; color:rgba(220,220,235,0.25);">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         REGISTER PENDING APPROVAL STATE
+         ══════════════════════════════════════════════ -->
+    <div id="register-pending-box" class="glass-card" style="display:none; max-width:420px; margin:0 auto; padding:36px 32px; text-align:center;">
+        <div style="width:60px;height:60px;border-radius:18px;background:rgba(253,203,110,0.15);border:1px solid rgba(253,203,110,0.35);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:1.6rem;">⏳</div>
+        <h2 style="font-size:1.2rem; margin-bottom:10px; color:var(--dark);">Request Submitted!</h2>
+        <p style="color:rgba(220,220,235,0.55); font-size:0.92rem; line-height:1.6; margin-bottom:22px;">
+            Your signup request has been sent to the admin for review.<br>
+            You will be able to login once your account is approved.
+        </p>
+        <button class="btn-secondary" id="back-to-login-btn" style="width:100%; padding:12px;">
+            <i class="fa-solid fa-arrow-left"></i> Back to Login
+        </button>
+    </div>
+
+    <!-- Toast Notification Container -->
+
+    <div id="toast-container"></div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="custom-confirm-overlay">
+        <div class="confirm-card">
+            <div class="confirm-icon-wrap">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="confirm-title" id="confirm-title">Are you sure?</div>
+            <div class="confirm-msg" id="confirm-msg">This action cannot be undone.</div>
+            <div class="confirm-actions">
+                <button id="confirm-cancel-btn">Cancel</button>
+                <button id="confirm-ok-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Prompt Modal -->
+    <div id="custom-prompt-overlay">
+        <div class="prompt-card">
+            <div class="prompt-title"><i class="fa-solid fa-pen-to-square"></i> <span id="prompt-title-text">Enter a value</span></div>
+            <input type="text" class="prompt-input" id="prompt-input" placeholder="Type here..." />
+            <div class="prompt-actions">
+                <button id="prompt-cancel-btn">Cancel</button>
+                <button id="prompt-ok-btn">OK</button>
+            </div>
         </div>
     </div>
 

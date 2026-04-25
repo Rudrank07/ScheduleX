@@ -1,3 +1,258 @@
+/* ══════════════════════════════════════════════════════════════
+   ELITE UPGRADE — Utility Functions
+   ══════════════════════════════════════════════════════════════ */
+
+// ── Toast Notification System ─────────────────────────────────────────────────
+const _TOAST_ICONS = {
+    success: 'fa-circle-check',
+    error:   'fa-circle-xmark',
+    info:    'fa-circle-info',
+    warning: 'fa-triangle-exclamation'
+};
+const _TOAST_TITLES = { success: 'Success', error: 'Error', info: 'Info', warning: 'Warning' };
+
+function showToast(message, type = 'info', duration = 3800) {
+    const container = document.getElementById('toast-container');
+    if (!container) { console.warn('Toast:', message); return; }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    // Detect success keywords to auto-type
+    if (type === 'info' && (message.includes('✅') || message.toLowerCase().includes('saved') || message.toLowerCase().includes('success') || message.toLowerCase().includes('published') || message.toLowerCase().includes('updated') || message.toLowerCase().includes('added'))) {
+        type = 'success';
+        toast.className = `toast toast-${type}`;
+    }
+
+    toast.innerHTML = `
+        <i class="fa-solid ${_TOAST_ICONS[type]} toast-icon"></i>
+        <div class="toast-body">
+            <div class="toast-title">${_TOAST_TITLES[type]}</div>
+            <div class="toast-msg">${message.replace(/✅\s?/g,'').replace(/⚠️\s?/g,'')}</div>
+        </div>
+        <button class="toast-close" title="Dismiss">&#x2715;</button>
+        <div class="toast-progress" style="animation-duration:${duration}ms"></div>
+    `;
+
+    container.appendChild(toast);
+
+    const dismiss = () => {
+        toast.classList.add('toast-exit');
+        toast.addEventListener('animationend', () => toast.remove(), { once: true });
+    };
+
+    toast.querySelector('.toast-close').addEventListener('click', dismiss);
+    setTimeout(dismiss, duration);
+}
+
+// ── Custom Confirm Modal ──────────────────────────────────────────────────────
+function showConfirm(message, title = 'Are you sure?', okLabel = 'Confirm', okClass = null) {
+    return new Promise(resolve => {
+        const overlay = document.getElementById('custom-confirm-overlay');
+        const titleEl = document.getElementById('confirm-title');
+        const msgEl   = document.getElementById('confirm-msg');
+        const okBtn   = document.getElementById('confirm-ok-btn');
+        const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+        if (!overlay) { resolve(false); return; }
+
+        titleEl.textContent = title;
+        msgEl.textContent   = message;
+        if (okLabel) okBtn.textContent = okLabel;
+        if (okClass) { okBtn.className = okClass; } else { okBtn.className = ''; okBtn.style.cssText = 'flex:1;padding:11px 16px;border-radius:10px;font-weight:600;cursor:pointer;background:#e05252;border:none;color:white;box-shadow:0 4px 15px rgba(224,82,82,0.3);transition:all 0.2s;'; }
+
+        overlay.classList.add('active');
+
+        const cleanup = (result) => {
+            overlay.classList.remove('active');
+            okBtn.replaceWith(okBtn.cloneNode(true));
+            cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+            resolve(result);
+        };
+
+        document.getElementById('confirm-ok-btn').addEventListener('click',     () => cleanup(true),  { once: true });
+        document.getElementById('confirm-cancel-btn').addEventListener('click',  () => cleanup(false), { once: true });
+        overlay.addEventListener('click', e => { if(e.target === overlay) cleanup(false); }, { once: true });
+    });
+}
+
+// ── Custom Prompt Modal ───────────────────────────────────────────────────────
+function showPrompt(message, placeholder = '', title = 'Enter a value') {
+    return new Promise(resolve => {
+        const overlay  = document.getElementById('custom-prompt-overlay');
+        const titleEl  = document.getElementById('prompt-title-text');
+        const inputEl  = document.getElementById('prompt-input');
+        const okBtn    = document.getElementById('prompt-ok-btn');
+        const cancelBtn= document.getElementById('prompt-cancel-btn');
+
+        if (!overlay) { resolve(prompt(message)); return; }
+
+        titleEl.textContent       = message || title;
+        inputEl.placeholder       = placeholder || 'Type here...';
+        inputEl.value             = '';
+        overlay.classList.add('active');
+        setTimeout(() => inputEl.focus(), 80);
+
+        const cleanup = (value) => {
+            overlay.classList.remove('active');
+            okBtn.replaceWith(okBtn.cloneNode(true));
+            cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+            inputEl.removeEventListener('keydown', onKey);
+            resolve(value);
+        };
+
+        const onKey = (e) => { if (e.key === 'Enter') cleanup(inputEl.value.trim() || null); if (e.key === 'Escape') cleanup(null); };
+        inputEl.addEventListener('keydown', onKey);
+        document.getElementById('prompt-ok-btn').addEventListener('click',     () => cleanup(inputEl.value.trim() || null), { once: true });
+        document.getElementById('prompt-cancel-btn').addEventListener('click',  () => cleanup(null),                         { once: true });
+    });
+}
+
+// ── Animated Counter ──────────────────────────────────────────────────────────
+function animateCounter(elementId, targetValue, duration = 700) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const start = parseInt(el.textContent) || 0;
+    const end   = parseInt(targetValue) || 0;
+    if (start === end) return;
+    const range = end - start;
+    const startTime = performance.now();
+    const step = (now) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+        el.textContent = Math.round(start + range * eased);
+        if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+}
+
+// ── Button Loading State ──────────────────────────────────────────────────────
+function setButtonLoading(btn, loading) {
+    if (!btn) return;
+    if (loading) {
+        btn._savedHTML = btn.innerHTML;
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
+        btn.innerHTML = '<span style="opacity:0">Loading</span>';
+    } else {
+        btn.classList.remove('btn-loading');
+        btn.disabled = false;
+        if (btn._savedHTML) btn.innerHTML = btn._savedHTML;
+    }
+}
+
+// ── Live Clock ────────────────────────────────────────────────────────────────
+function startLiveClock() {
+    const timeEl = document.getElementById('dash-clock-time');
+    const dateEl = document.getElementById('dash-clock-date');
+    if (!timeEl) return;
+
+    const days  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months= ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    function tick() {
+        const now = new Date();
+        let h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        timeEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} ${ampm}`;
+        if (dateEl) dateEl.textContent = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()} ${now.getFullYear()}`;
+    }
+    tick();
+    setInterval(tick, 1000);
+}
+
+// ── Login Particles ───────────────────────────────────────────────────────────
+function spawnLoginParticles() {
+    const overlay = document.getElementById('login-overlay');
+    if (!overlay) return;
+    const colors = ['#7C6EF5','#00cec9','#fd79a8','#a29bfe','#fdcb6e'];
+    for (let i = 0; i < 18; i++) {
+        const p = document.createElement('div');
+        p.className = 'login-particle';
+        const size = 3 + Math.random() * 5;
+        p.style.cssText = [
+            `width:${size}px`, `height:${size}px`,
+            `left:${Math.random()*100}%`,
+            `bottom:${-size}px`,
+            `background:${colors[Math.floor(Math.random()*colors.length)]}`,
+            `animation-duration:${6 + Math.random()*8}s`,
+            `animation-delay:${Math.random()*6}s`,
+            `opacity:0`
+        ].join(';');
+        overlay.appendChild(p);
+    }
+}
+
+// ── Update Sidebar & Header Role UI ──────────────────────────────────────────
+function updateUserUI(username, role) {
+    const sideNameEl   = document.getElementById('sidebar-username-text');
+    const sideRoleEl   = document.getElementById('sidebar-role-badge');
+    const sideAvatarEl = document.getElementById('sidebar-avatar-icon');
+    const headerBadge  = document.getElementById('header-role-badge');
+    if (sideNameEl) sideNameEl.textContent = username || 'User';
+
+    if (role === 'admin') {
+        if (sideRoleEl) {
+            sideRoleEl.className = 'sidebar-role-badge';
+            sideRoleEl.style.cssText = 'background:rgba(253,203,110,0.15);color:#fdcb6e;border:1px solid rgba(253,203,110,0.35);display:inline-flex;align-items:center;gap:4px;font-size:0.68rem;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;padding:2px 8px;border-radius:20px;margin-top:3px;';
+            sideRoleEl.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Admin';
+        }
+        if (sideAvatarEl) sideAvatarEl.innerHTML = '<i class="fa-solid fa-shield-halved"></i>';
+        if (headerBadge) {
+            headerBadge.className = 'header-role-badge';
+            headerBadge.style.cssText = 'background:rgba(253,203,110,0.15);color:#fdcb6e;border:1px solid rgba(253,203,110,0.35);';
+            headerBadge.textContent = 'Admin';
+        }
+    } else if (role === 'teacher') {
+        if (sideRoleEl) {
+            sideRoleEl.className = 'sidebar-role-badge role-teacher';
+            sideRoleEl.style.cssText = '';
+            sideRoleEl.innerHTML = '<i class="fa-solid fa-chalkboard"></i> Teacher';
+        }
+        if (sideAvatarEl) sideAvatarEl.innerHTML = '<i class="fa-solid fa-chalkboard-user"></i>';
+        if (headerBadge) {
+            headerBadge.className = 'header-role-badge role-teacher';
+            headerBadge.style.cssText = '';
+            headerBadge.textContent = 'Teacher';
+        }
+    } else {
+        if (sideRoleEl) {
+            sideRoleEl.className = 'sidebar-role-badge role-student';
+            sideRoleEl.style.cssText = '';
+            sideRoleEl.innerHTML = '<i class="fa-solid fa-user-graduate"></i> Student';
+        }
+        if (sideAvatarEl) sideAvatarEl.innerHTML = '<i class="fa-solid fa-user-graduate"></i>';
+        if (headerBadge) {
+            headerBadge.className = 'header-role-badge role-student';
+            headerBadge.style.cssText = '';
+            headerBadge.textContent = 'Student';
+        }
+    }
+}
+
+// ── Day column CSS class helper ───────────────────────────────────────────────
+const _DAY_CLASSES = ['', 'day-mon','day-tue','day-wed','day-thu','day-fri','day-sat'];
+
+// ── Attendance percentage bar HTML helper ──────────────────────────────────────
+function attPctBar(present, total) {
+    if (!total) return '<span style="color:rgba(220,220,235,0.3)">—</span>';
+    const pct = Math.round((present / total) * 100);
+    const cls = pct >= 75 ? 'pct-high' : pct >= 50 ? 'pct-mid' : 'pct-low';
+    return `
+        <div class="att-pct-bar-wrap">
+            <div class="att-pct-bar"><div class="att-pct-fill ${cls}" style="width:${pct}%"></div></div>
+            <span class="att-pct-label ${cls}">${pct}%</span>
+        </div>`;
+}
+
+// ── Init on DOM ready ─────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    startLiveClock();
+    spawnLoginParticles();
+});
+
 // State Management
 const state = {
     teachers: [],
@@ -11,6 +266,7 @@ const state = {
     classBatches: {},     // className -> true/false (localStorage)
     labBlockSizes: {}     // subjectName -> block size in slots (default 2)
 };
+
 
 // ── Sub-Batch Preferences (localStorage, no DB needed) ───────────────
 function loadBatchPrefs() {
@@ -140,7 +396,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('main-app-container').classList.add('hidden');
     } else {
         const user = localStorage.getItem('loggedInUser');
+        const role = localStorage.getItem('loggedInRole');
         if(user) document.getElementById('display-username').innerText = user;
+        updateUserUI(user, role);
         
         applyRoleRestrictions();
         
@@ -157,38 +415,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function applyRoleRestrictions() {
     const role = localStorage.getItem('loggedInRole');
-    if(role === 'student') {
-        const addDataTab = document.querySelector('[data-target="add-data-page"]');
-        const genTab = document.querySelector('[data-target="generate-page"]');
-        const historyTab = document.querySelector('[data-target="history-page"]');
-        const dashboardTab = document.querySelector('[data-target="dashboard-page"]');
-        
-        if(addDataTab) addDataTab.style.display = 'none';
-        if(genTab) genTab.style.display = 'none';
-        if(historyTab) historyTab.style.display = 'none';
-        if(dashboardTab) dashboardTab.style.display = 'none';
+    const addDataTab    = document.querySelector('[data-target="add-data-page"]');
+    const genTab        = document.querySelector('[data-target="generate-page"]');
+    const historyTab    = document.querySelector('[data-target="history-page"]');
+    const dashboardTab  = document.querySelector('[data-target="dashboard-page"]');
+    const adminNavItem  = document.getElementById('admin-nav-item');
+
+    if (role === 'admin') {
+        // Admin sees everything: all teacher tabs + admin tab
+        if (addDataTab)   addDataTab.style.display = '';
+        if (genTab)       genTab.style.display = '';
+        if (historyTab)   historyTab.style.display = '';
+        if (dashboardTab) dashboardTab.style.display = '';
+        if (adminNavItem) adminNavItem.style.display = '';
+
+        const resetBtn = document.getElementById('reset-btn');
+        if (resetBtn) resetBtn.style.display = '';
+        const saveHistBtn = document.getElementById('save-history-btn');
+        if (saveHistBtn) saveHistBtn.style.display = '';
+        const publishBtn = document.getElementById('publish-timetable-btn');
+        if (publishBtn) publishBtn.style.display = '';
+        const editBtn = document.getElementById('edit-timetable-btn');
+        if (editBtn) editBtn.style.display = '';
+
+    } else if (role === 'student') {
+        if (addDataTab)   addDataTab.style.display = 'none';
+        if (genTab)       genTab.style.display = 'none';
+        if (historyTab)   historyTab.style.display = 'none';
+        if (dashboardTab) dashboardTab.style.display = 'none';
+        if (adminNavItem) adminNavItem.style.display = 'none';
         
         const resetBtn = document.getElementById('reset-btn');
-        if(resetBtn) resetBtn.style.display = 'none';
-        
+        if (resetBtn) resetBtn.style.display = 'none';
         const saveHistBtn = document.getElementById('save-history-btn');
-        if(saveHistBtn) saveHistBtn.style.display = 'none';
-
+        if (saveHistBtn) saveHistBtn.style.display = 'none';
         const publishBtn = document.getElementById('publish-timetable-btn');
-        if(publishBtn) publishBtn.style.display = 'none';
-
+        if (publishBtn) publishBtn.style.display = 'none';
         const editBtn = document.getElementById('edit-timetable-btn');
-        if(editBtn) editBtn.style.display = 'none';
-        
+        if (editBtn) editBtn.style.display = 'none';
+
         const navLinksArr = document.querySelectorAll('.nav-links li');
         navLinksArr.forEach(l => l.classList.remove('active'));
         document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
-        
+
         const vtTab = document.querySelector('[data-target="view-timetable-page"]');
-        if(vtTab) vtTab.classList.add('active');
-        
+        if (vtTab) vtTab.classList.add('active');
         const vtPage = document.getElementById('view-timetable-page');
-        if(vtPage) vtPage.classList.remove('hidden');
+        if (vtPage) vtPage.classList.remove('hidden');
+
+    } else {
+        // Teacher: all tabs visible except admin
+        if (adminNavItem) adminNavItem.style.display = 'none';
     }
 }
 
@@ -252,12 +529,14 @@ document.getElementById('submit-login-btn').addEventListener('click', async () =
             localStorage.setItem('loggedInRole', returnedRole);
             localStorage.setItem('loggedInUserId', data.id);  // store user id for data isolation
             document.getElementById('display-username').innerText = user;
+            updateUserUI(user, returnedRole);
             
             applyRoleRestrictions();
             
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('main-app-container').classList.remove('hidden');
             errObj.style.display = 'none';
+            showToast(`Welcome back, ${user}!`, 'success');
             if (returnedRole === 'student') {
                 loadPublishedTimetables();
             } else {
@@ -312,23 +591,25 @@ document.getElementById('submit-reg-btn').addEventListener('click', async () => 
         const data = await res.json();
         
         if (data.success) {
-            // Once registered securely, automatically log them in natively!
-            localStorage.setItem('adminLoggedIn', 'true');
-            localStorage.setItem('loggedInUser', user);
-            localStorage.setItem('loggedInRole', data.role || roleOpt);
-            localStorage.setItem('loggedInUserId', data.id);  // store user id for data isolation
-            document.getElementById('display-username').innerText = user;
-            
-            applyRoleRestrictions();
-            
-            document.getElementById('login-overlay').style.display = 'none';
-            document.getElementById('main-app-container').classList.remove('hidden');
             errObj.style.display = 'none';
-            const regRole = data.role || roleOpt;
-            if (regRole === 'student') {
-                loadPublishedTimetables();
+            if (data.pending) {
+                // Show pending approval state instead of auto-login
+                document.getElementById('register-form-box').style.display = 'none';
+                document.getElementById('register-pending-box').style.display = 'block';
             } else {
-                loadInitialData();
+                // Legacy: auto-login (shouldn't happen with new backend)
+                const regRole = data.role || roleOpt;
+                localStorage.setItem('adminLoggedIn', 'true');
+                localStorage.setItem('loggedInUser', user);
+                localStorage.setItem('loggedInRole', regRole);
+                localStorage.setItem('loggedInUserId', data.id);
+                document.getElementById('display-username').innerText = user;
+                updateUserUI(user, regRole);
+                applyRoleRestrictions();
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('main-app-container').classList.remove('hidden');
+                showToast(`Welcome, ${user}!`, 'success');
+                if (regRole === 'student') loadPublishedTimetables(); else loadInitialData();
             }
         } else {
             errObj.innerText = data.error;
@@ -338,6 +619,13 @@ document.getElementById('submit-reg-btn').addEventListener('click', async () => 
         errObj.innerText = "API Backend Disconnected!";
         errObj.style.display = 'block';
     }
+});
+
+// Back to login from pending state
+document.getElementById('back-to-login-btn').addEventListener('click', () => {
+    document.getElementById('register-pending-box').style.display = 'none';
+    document.getElementById('register-form-box').style.display = 'none';
+    document.getElementById('login-form-box').style.display = 'block';
 });
 
 document.getElementById('admin-logout-btn').addEventListener('click', () => {
@@ -400,11 +688,11 @@ tabBtns.forEach(btn => {
     });
 });
 
-// Stats updaters
 function updateStats() {
-    document.getElementById('stat-teachers').innerText = state.teachers.length;
-    document.getElementById('stat-subjects').innerText = state.subjects.length;
-    document.getElementById('stat-classes').innerText = state.classes.length;
+    animateCounter('stat-teachers',  state.teachers.length);
+    animateCounter('stat-subjects',  state.subjects.length);
+    animateCounter('stat-classes',   state.classes.length);
+    animateCounter('stat-timeslots', state.timeSlots.length);
     updateDropdowns();
 }
 
@@ -496,7 +784,7 @@ window.openEditSubject = function(item) {
     document.getElementById('edit-subject-save').onclick = async () => {
         const newHours = parseInt(document.getElementById('edit-subject-hours').value);
         if (!newHours || newHours < 1) {
-            alert('Please enter a valid number of hours (≥ 1).');
+            showToast('Please enter a valid number of hours (≥ 1).', 'warning');
             return;
         }
         try {
@@ -509,11 +797,12 @@ window.openEditSubject = function(item) {
             if (data.success) {
                 popover.remove();
                 await loadInitialData();
+                showToast('Subject hours updated!', 'success');
             } else {
-                alert('Error: ' + (data.error || 'Could not update subject'));
+                showToast('Error: ' + (data.error || 'Could not update subject'), 'error');
             }
         } catch (err) {
-            alert('Request failed: ' + err);
+            showToast('Request failed: ' + err, 'error');
         }
     };
 
@@ -537,11 +826,12 @@ document.getElementById('teacher-form').addEventListener('submit', async (e) => 
             if(data.success) {
                 input.value = '';
                 await loadInitialData();
+                showToast('Teacher added!', 'success');
             } else {
-                alert(data.error);
+                showToast(data.error, 'error');
             }
         } catch(err) {
-            alert("API Error: " + err);
+            showToast('API Error: ' + err, 'error');
         }
     }
 });
@@ -567,11 +857,12 @@ document.getElementById('subject-form').addEventListener('submit', async (e) => 
                 hoursInput.value = '';
                 document.getElementById('is-lab').checked = false;
                 await loadInitialData();
+                showToast('Subject added!', 'success');
             } else {
-                alert(data.error);
+                showToast(data.error, 'error');
             }
         } catch(err) {
-            alert("API Error: " + err);
+            showToast('API Error: ' + err, 'error');
         }
     }
 });
@@ -590,11 +881,12 @@ document.getElementById('class-form').addEventListener('submit', async (e) => {
             if(data.success) {
                 input.value = '';
                 await loadInitialData();
+                showToast('Class added!', 'success');
             } else {
-                alert(data.error);
+                showToast(data.error, 'error');
             }
         } catch(err) {
-            alert("API Error: " + err);
+            showToast('API Error: ' + err, 'error');
         }
     }
 });
@@ -664,11 +956,12 @@ document.getElementById('time-form').addEventListener('submit', async (e) => {
                 });
                 document.getElementById('is-break').checked = false;
                 await loadInitialData();
+                showToast('Time slot added!', 'success');
             } else {
-                alert(data.error);
+                showToast(data.error, 'error');
             }
         } catch(err) {
-            alert("API Error: " + err);
+            showToast('API Error: ' + err, 'error');
         }
     }
 });
@@ -696,11 +989,12 @@ document.getElementById('assign-form').addEventListener('submit', async (e) => {
                 sSelect.value = "";
                 cSelect.value = "";
                 await loadInitialData();
+                showToast('Assignment saved!', 'success');
             } else {
-                alert(data.error);
+                showToast(data.error, 'error');
             }
         } catch(err) {
-            alert("API Error: " + err);
+            showToast('API Error: ' + err, 'error');
         }
     }
 });
@@ -723,9 +1017,10 @@ function updateDropdowns() {
 
 function updateLists() {
     renderList('teacher-list', state.teachers, 'name', async (idx, item) => { 
-        if(confirm(`Delete teacher: ${item.name}?`)) {
+        if(await showConfirm(`Delete teacher "${item.name}"? This cannot be undone.`, 'Delete Teacher', 'Delete')) {
             await apiFetch(`${API_BASE}/delete_teacher/${item.id}`, { method: 'DELETE' });
             await loadInitialData();
+            showToast(`Teacher "${item.name}" deleted.`, 'warning');
         }
     });
     renderList('subject-list', state.subjects, (s) => {
@@ -740,9 +1035,10 @@ function updateLists() {
         }
         return label;
     }, async (idx, item) => { 
-        if(confirm(`Delete subject: ${item.name}?`)) {
+        if(await showConfirm(`Delete subject "${item.name}"? This cannot be undone.`, 'Delete Subject', 'Delete')) {
             await apiFetch(`${API_BASE}/delete_subject/${item.id}`, { method: 'DELETE' });
             await loadInitialData();
+            showToast(`Subject "${item.name}" deleted.`, 'warning');
         }
     }, (idx, item) => {
         // Edit callback — opens the weekly-hours editor
@@ -752,21 +1048,24 @@ function updateLists() {
         const on = !!state.classBatches[c.name];
         return `${c.name} <span class="batch-toggle-badge${on ? ' active' : ''}" onclick="event.stopPropagation();toggleClassBatch('${c.name}')"><i class="fa-solid fa-users-viewfinder"></i> ${on ? '3 Batches ON' : 'Batches OFF'}</span>`;
     }, async (idx, item) => {
-        if(confirm(`Delete class: ${item.name}?`)) {
+        if(await showConfirm(`Delete class "${item.name}"? This cannot be undone.`, 'Delete Class', 'Delete')) {
             await apiFetch(`${API_BASE}/delete_class/${item.id}`, { method: 'DELETE' });
             await loadInitialData();
+            showToast(`Class "${item.name}" deleted.`, 'warning');
         }
     });
     renderList('time-list', state.timeSlots, (t) => `${t.display}${t.isBreak ? ' (Break)' : ''}`, async (idx, item) => { 
-        if(confirm(`Delete time slot: ${item.display}?`)) {
+        if(await showConfirm(`Delete time slot "${item.display}"?`, 'Delete Time Slot', 'Delete')) {
             await apiFetch(`${API_BASE}/delete_time_slot/${item.id}`, { method: 'DELETE' });
             await loadInitialData();
+            showToast('Time slot deleted.', 'warning');
         }
     });
     renderList('assignment-list', state.assignments, (a) => `${a.subject.name} &rarr; ${a.class.name} (${a.teacher.name})`, async (idx, item) => { 
-        if(confirm(`Delete assignment?`)) {
+        if(await showConfirm('Delete this assignment?', 'Delete Assignment', 'Delete')) {
             await apiFetch(`${API_BASE}/delete_assignment/${item.id}`, { method: 'DELETE' });
             await loadInitialData();
+            showToast('Assignment deleted.', 'warning');
         }
     });
 }
@@ -1060,7 +1359,7 @@ function generateGlobalTimetable() {
 // Generate Timetable Animation
 document.getElementById('generate-btn').addEventListener('click', function(e) {
     if(state.classes.length === 0 || state.assignments.length === 0) {
-        alert("Please add some classes and assign subjects to teachers first!");
+        showToast('Please add some classes and assign subjects to teachers first!', 'warning');
         return;
     }
 
@@ -1171,10 +1470,13 @@ function renderTimetable(className) {
         const rowData = grid[rowIndex];
         for(let i = 0; i < 6; i++) {
             const td = document.createElement('td');
+            // Day column color class
+            const dayCls = ['day-mon','day-tue','day-wed','day-thu','day-fri','day-sat'][i];
+            if(dayCls) td.classList.add(dayCls);
             const cellData = rowData ? rowData[i] : null;
             
             if(!cellData || cellData.type === 'break') {
-                td.innerHTML = `<div class="cell-empty">Break</div>`;
+                td.innerHTML = `<div class="break-cell"><i class="fa-solid fa-mug-hot"></i> Break</div>`;
             } else if(cellData.type === 'batch-lab') {
                 td.innerHTML = `<div class="batch-cell">${cellData.batches.map((a, i) =>
                     `<div class="batch-row batch-row-${i+1}">
@@ -1215,7 +1517,7 @@ function renderTimetable(className) {
 // ── Edit Mode: Toggle ───────────────────────────────────────────────
 document.getElementById('edit-timetable-btn').addEventListener('click', () => {
     if(!state.timetableGenerated) {
-        alert('Please generate a timetable first!');
+        showToast('Please generate a timetable first!', 'warning');
         return;
     }
     editMode = !editMode;
@@ -1297,7 +1599,7 @@ document.getElementById('edit-cell-modal').addEventListener('click', (e) => {
 });
 
 document.getElementById('reset-btn').addEventListener('click', async () => {
-    if(confirm("Are you sure you want to reset all generated timetables? (Data will not be deleted)")) {
+    if(await showConfirm('Reset all generated timetables? Your input data (teachers, subjects, classes) will NOT be deleted.', 'Reset Timetables', 'Reset')) {
         state.timetableGenerated = false;
         state.timetableCache = {};
         
@@ -1318,7 +1620,7 @@ document.getElementById('export-pdf').addEventListener('click', () => {
     const isStudent = localStorage.getItem('loggedInRole') === 'student';
     const hasContent = state.timetableGenerated || (isStudent && publishedTimetablesData.length > 0);
     if(!hasContent) {
-        alert("No timetable available to download!");
+        showToast("No timetable available to download!", 'warning');
         return;
     }
     const element = document.getElementById('timetable');
@@ -1338,7 +1640,7 @@ document.getElementById('export-excel').addEventListener('click', () => {
     const isStudent = localStorage.getItem('loggedInRole') === 'student';
     const hasContent = state.timetableGenerated || (isStudent && publishedTimetablesData.length > 0);
     if(!hasContent) {
-        alert("No timetable available to download!");
+        showToast("No timetable available to download!", 'warning');
         return;
     }
     const table = document.getElementById('timetable');
@@ -1372,7 +1674,7 @@ function renderHistory() {
 }
 
 window.restoreHistory = async function(id) {
-    if(!confirm("Restore this snapshot? This will overwrite your currently viewed timetable layout!")) return;
+    if(!await showConfirm('Restore this snapshot? This will overwrite your currently viewed timetable layout!', 'Restore Snapshot', 'Restore')) return;
     try {
         const res = await apiFetch(`${API_BASE}/history/${id}`);
         const data = await res.json();
@@ -1399,26 +1701,27 @@ window.restoreHistory = async function(id) {
             });
         }
     } catch(err) {
-        alert("API Error restoring: " + err);
+        showToast('API Error restoring: ' + err, 'error');
     }
 };
 
 window.deleteHistory = async function(id) {
-    if(!confirm("Erase this snapshot permanently?")) return;
+    if(!await showConfirm('Erase this snapshot permanently? This cannot be undone.', 'Delete Snapshot', 'Delete')) return;
     try {
         await apiFetch(`${API_BASE}/delete_history/${id}`, { method: 'DELETE' });
-        await loadInitialData(); 
+        await loadInitialData();
+        showToast('Snapshot deleted.', 'warning');
     } catch(err) {
-        alert("API Error: " + err);
+        showToast('API Error: ' + err, 'error');
     }
 };
 
 document.getElementById('save-history-btn').addEventListener('click', async () => {
     if(!state.timetableGenerated || Object.keys(state.timetableCache).length === 0) {
-        alert("You must generate a timetable first before saving it to history!");
+        showToast('Generate a timetable first before saving to history!', 'warning');
         return;
     }
-    const name = prompt("Enter a name for this Timetable Snapshot:");
+    const name = await showPrompt('Enter a name for this Timetable Snapshot:', 'e.g. Semester 1 Final', 'Save Snapshot');
     if(!name || !name.trim()) return;
     
     try {
@@ -1429,13 +1732,13 @@ document.getElementById('save-history-btn').addEventListener('click', async () =
         });
         const d = await res.json();
         if(d.success) {
-            alert("Snapshot saved successfully!");
+            showToast('Snapshot saved successfully!', 'success');
             await loadInitialData(); 
         } else {
-            alert("Error: " + d.error);
+            showToast('Error: ' + d.error, 'error');
         }
     } catch(err) {
-        alert("API Error: " + err);
+        showToast('API Error: ' + err, 'error');
     }
 });
 
@@ -1443,7 +1746,7 @@ document.getElementById('save-history-btn').addEventListener('click', async () =
 
 document.getElementById('publish-timetable-btn').addEventListener('click', async () => {
     if(!state.timetableGenerated || Object.keys(state.timetableCache).length === 0) {
-        alert("Please generate a timetable first before publishing!");
+        showToast('Generate a timetable first before publishing!', 'warning');
         return;
     }
     try {
@@ -1459,12 +1762,12 @@ document.getElementById('publish-timetable-btn').addEventListener('click', async
         });
         const data = await res.json();
         if(data.success) {
-            alert("✅ Timetable published! Students can now view it.");
+            showToast('Timetable published! Students can now view it.', 'success');
         } else {
-            alert("Error: " + data.error);
+            showToast('Error: ' + data.error, 'error');
         }
     } catch(err) {
-        alert("API Error: " + err);
+        showToast('API Error: ' + err, 'error');
     }
 });
 
@@ -1699,7 +2002,7 @@ async function loadRosterSection(divId) {
 
 window.generateStudentInputs = function(divId) {
     const n = parseInt(document.getElementById(`att-stu-count-${divId}`).value);
-    if (!n || n < 1) { alert('Enter number of students.'); return; }
+    if (!n || n < 1) { showToast('Enter number of students.', 'warning'); return; }
     const grid    = document.getElementById(`att-stu-names-${divId}`);
     const saveBtn = document.getElementById(`att-stu-save-${divId}`);
     grid.style.display = 'grid'; saveBtn.style.display = 'block';
@@ -1715,12 +2018,12 @@ window.generateStudentInputs = function(divId) {
 window.saveRosterFromSetup = async function(divId) {
     const grid = document.getElementById(`att-stu-names-${divId}`);
     if (!grid || grid.style.display === 'none') {
-        alert('Please click "Enter Names" first to generate the student name inputs.');
+        showToast('Please click "Enter Names" first to generate the student name inputs.', 'warning');
         return;
     }
     const inputs = grid.querySelectorAll('input[type="text"]');
     if (inputs.length === 0) {
-        alert('No student inputs found. Please click "Enter Names" again.');
+        showToast('No student inputs found. Please click "Enter Names" again.', 'warning');
         return;
     }
     const students = Array.from(inputs).map((inp, i) => ({
@@ -1735,23 +2038,23 @@ window.saveRosterFromSetup = async function(divId) {
         });
         const d = await res.json();
         if (d.success) {
-            alert(`✅ ${students.length} students saved for this division!`);
+            showToast(`✅ ${students.length} students saved for this division!`, 'success');
             loadRosterSection(divId);
         } else {
-            alert('Error saving: ' + (d.error || 'Unknown error'));
+            showToast('Error saving: ' + (d.error || 'Unknown error', 'error'));
         }
-    } catch(e) { alert('Error: ' + e); }
+    } catch(e) { showToast('Error: ' + e, 'error'); }
 };
 
 window.clearRoster = async function(divId) {
-    if (!confirm('Clear all students for this division?')) return;
+    if (!await showConfirm('Clear all students for this division?')) return;
     try {
         await apiFetch(`/attendance/roster/${divId}`, {
             method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ students: [] })
         });
         loadRosterSection(divId);
-    } catch(e) { alert('Error: ' + e); }
+    } catch(e) { showToast('Error: ' + e, 'error'); }
 };
 
 async function loadSubjectList(divId) {
@@ -1785,7 +2088,7 @@ window.addSubject = async function(divId) {
         inp.value = '';
         loadSubjectList(divId);
         await loadAttDivisions(); // refresh dropdowns too
-    } catch(e) { alert('Error: ' + e); }
+    } catch(e) { showToast('Error: ' + e, 'error'); }
 };
 
 window.deleteSubject = async function(divId, subId, icon) {
@@ -1793,16 +2096,16 @@ window.deleteSubject = async function(divId, subId, icon) {
         await apiFetch(`/attendance/division/${divId}/subject/${subId}`, { method: 'DELETE' });
         icon.closest('span').remove();
         await loadAttDivisions();
-    } catch(e) { alert('Error: ' + e); }
+    } catch(e) { showToast('Error: ' + e, 'error'); }
 };
 
 window.deleteDivision = async function(divId) {
-    if (!confirm('Delete this division and all its subjects?')) return;
+    if (!await showConfirm('Delete this division and all its subjects?')) return;
     try {
         await apiFetch(`/attendance/division/${divId}`, { method: 'DELETE' });
         document.getElementById(`att-div-card-${divId}`)?.remove();
         await loadAttDivisions();
-    } catch(e) { alert('Error: ' + e); }
+    } catch(e) { showToast('Error: ' + e, 'error'); }
 };
 
 document.getElementById('att-add-div-btn').addEventListener('click', async () => {
@@ -1816,7 +2119,7 @@ document.getElementById('att-add-div-btn').addEventListener('click', async () =>
         inp.value = '';
         loadDivisionList();
         await loadAttDivisions();
-    } catch(e) { alert('Error: ' + e); }
+    } catch(e) { showToast('Error: ' + e, 'error'); }
 });
 
 // Load manage tab when clicked
@@ -1845,7 +2148,7 @@ document.getElementById('att-start-btn').addEventListener('click', async () => {
     const cid  = document.getElementById('att-class-sel').value;
     const sid  = document.getElementById('att-subj-sel').value;
     const date = document.getElementById('att-date').value;
-    if (!cid || !sid || !date) { alert('Please select class, subject and date.'); return; }
+    if (!cid || !sid || !date) { showToast('Please select class, subject and date.', 'warning'); return; }
     att.date = date; att.classId = cid; att.subjectId = sid;
     document.getElementById('att-setup-card').style.display = 'none';
     document.getElementById('att-mark-card').style.display  = 'none';
@@ -1866,7 +2169,7 @@ document.getElementById('att-start-btn').addEventListener('click', async () => {
                     <button class="btn-primary" onclick="switchToSetupTab()"><i class="fa-solid fa-arrow-right"></i> Go to Setup</button>
                 </div>`;
         }
-    } catch(e) { alert('Error: ' + e); }
+    } catch(e) { showToast('Error: ' + e, 'error'); }
 });
 
 function attShowMarkCard() {
@@ -1883,7 +2186,7 @@ function attShowMarkCard() {
 // ── One-time setup handlers ───────────────────────────────────────────
 document.getElementById('att-setup-next').addEventListener('click', () => {
     const n = parseInt(document.getElementById('att-setup-count').value);
-    if (!n || n < 1) { alert('Please enter number of students.'); return; }
+    if (!n || n < 1) { showToast('Please enter number of students.', 'warning'); return; }
     att.students = Array.from({length: n}, (_, i) => ({ name:`Student ${i+1}`, roll:`${i+1}`, status:'absent' }));
     attRenderSetupNames(att.students);
     document.getElementById('att-setup-s1').classList.add('hidden');
@@ -1903,7 +2206,7 @@ document.getElementById('att-setup-save').addEventListener('click', async () => 
             body: JSON.stringify({ students: att.students.map(s => ({ name:s.name, roll:s.roll })) })
         });
         attShowMarkCard();
-    } catch(e) { alert('Error saving students: ' + e); }
+    } catch(e) { showToast('Error saving students: ' + e, 'error'); }
 });
 
 document.getElementById('att-mark-back').addEventListener('click', () => {
@@ -1986,14 +2289,14 @@ document.getElementById('att-save-btn').addEventListener('click', async () => {
         });
         const d = await res.json();
         if (d.success) {
-            alert('✅ Attendance saved!');
+            showToast('✅ Attendance saved!', 'success');
             // Reset for next session
             att.students = []; att.date=''; att.classId=null; att.subjectId=null;
             document.getElementById('att-mark-card').style.display  = 'none';
             document.getElementById('att-setup-card').style.display = 'none';
             document.getElementById('att-date').value = new Date().toISOString().split('T')[0];
-        } else { alert('Error: ' + d.error); }
-    } catch(e) { alert('API Error: ' + e); }
+        } else { showToast('Error: ' + d.error, 'error'); }
+    } catch(e) { showToast('API Error: ' + e, 'error'); }
 });
 
 // ── Load sessions (Records tab) ───────────────────────────────────────
@@ -2055,11 +2358,11 @@ document.getElementById('att-flt-btn').addEventListener('click', () => {
 
 // ── Delete session ────────────────────────────────────────────────────
 window.attDeleteSession = async function(id) {
-    if (!confirm('Delete this attendance session permanently?')) return;
+    if (!await showConfirm('Delete this attendance session permanently?')) return;
     try {
         await apiFetch(`/attendance/session/${id}`, {method:'DELETE'});
         await loadAttSessions();
-    } catch(e) { alert('Error: ' + e); }
+    } catch(e) { showToast('Error: ' + e, 'error'); }
 };
 
 // ── Edit session modal ────────────────────────────────────────────────
@@ -2067,14 +2370,14 @@ window.attOpenEdit = async function(id) {
     try {
         const res = await apiFetch(`/attendance/session/${id}`);
         const data = await res.json();
-        if (data.error) { alert(data.error); return; }
+        if (data.error) { showToast(data.error, 'error'); return; }
         att.editSessionId = id;
         att.editRecords = data.records.map(r => ({id:r.id, name:r.student_name, roll:r.student_roll, status:r.status}));
         document.getElementById('att-edit-info').textContent = `${data.date}  ·  ${data.class_name}  ·  ${data.subject_name}`;
         attRenderMarkGrid('att-edit-grid', att.editRecords, true);
         const modal = document.getElementById('att-edit-modal');
         modal.style.display = 'flex';
-    } catch(e) { alert('Error: ' + e); }
+    } catch(e) { showToast('Error: ' + e, 'error'); }
 };
 
 document.getElementById('att-edit-all-p').addEventListener('click', () => {
@@ -2096,10 +2399,10 @@ document.getElementById('att-edit-save').addEventListener('click', async () => {
         const d = await res.json();
         if (d.success) {
             document.getElementById('att-edit-modal').style.display = 'none';
-            alert('✅ Attendance updated!');
+            showToast('✅ Attendance updated!', 'success');
             await loadAttSessions();
-        } else { alert('Error: ' + d.error); }
-    } catch(e) { alert('Error: ' + e); }
+        } else { showToast('Error: ' + d.error, 'error'); }
+    } catch(e) { showToast('Error: ' + e, 'error'); }
 });
 
 document.getElementById('att-edit-cancel').addEventListener('click', () => {
@@ -2141,7 +2444,7 @@ document.getElementById('att-rpt-btn').addEventListener('click', async () => {
                 <td style="text-align:center;"><b style="color:${color}">${pct}%</b>${bar}</td>`;
             tbody.appendChild(tr);
         });
-    } catch(e) { alert('Error: ' + e); }
+    } catch(e) { showToast('Error: ' + e, 'error'); }
 });
 
 // ── Student view ──────────────────────────────────────────────────────
@@ -2183,7 +2486,7 @@ document.querySelectorAll('#att-student-tabs .tab-btn').forEach(btn => {
 // ── My Report ─────────────────────────────────────────────────────────
 document.getElementById('att-my-report-btn').addEventListener('click', async () => {
     const name = document.getElementById('att-my-name').value.trim();
-    if (!name) { alert('Please enter your name.'); return; }
+    if (!name) { showToast('Please enter your name.', 'warning'); return; }
     const result = document.getElementById('att-my-report-result');
     result.innerHTML = '<p style="color:rgba(220,220,235,0.4);">Loading...</p>';
     try {
@@ -2239,7 +2542,7 @@ window.attViewSession = async function(id) {
     try {
         const res = await apiFetch(`/attendance/session/${id}/public`);
         const d = await res.json();
-        if (d.error) { alert('Error: ' + d.error); return; }
+        if (d.error) { showToast('Error: ' + d.error, 'error'); return; }
         // Populate modal
         document.getElementById('att-view-meta').textContent =
             `📅 ${d.date}  ·  🏫 ${d.class_name}  ·  📚 ${d.subject_name}  ·  👨‍🏫 ${d.teacher_name}`;
@@ -2266,7 +2569,7 @@ window.attViewSession = async function(id) {
             list.appendChild(row);
         });
         document.getElementById('att-view-modal').style.display = 'flex';
-    } catch(e) { alert('Error loading session: ' + e); }
+    } catch(e) { showToast('Error loading session: ' + e, 'error'); }
 };
 
 // Close student view modal
@@ -2296,8 +2599,8 @@ window.attTogglePublish = async function(id, btn) {
             // Update local cache
             const s = att.sessions.find(x => x.id === id);
             if (s) s.is_published = d.is_published ? 1 : 0;
-        } else { alert('Error: ' + d.error); }
-    } catch(e) { alert('Error: ' + e); }
+        } else { showToast('Error: ' + d.error, 'error'); }
+    } catch(e) { showToast('Error: ' + e, 'error'); }
 };
 
 // ── Wire up: when Attendance nav is clicked ───────────────────────────
@@ -2329,3 +2632,219 @@ document.addEventListener('DOMContentLoaded', () => {
         // (handled inside the click handler above)
     }
 });
+
+/* ══════════════════════════════════════════════════════════════
+   ADMIN MODULE — Signup Approval & User Management
+   ══════════════════════════════════════════════════════════════ */
+
+// ── Load the full admin page ──────────────────────────────────────────────────
+async function loadAdminPage() {
+    await Promise.all([loadAdminRequests(), loadAdminUsers()]);
+}
+
+// ── Load pending signup requests ─────────────────────────────────────────────
+async function loadAdminRequests() {
+    const container = document.getElementById('admin-requests-list');
+    if (!container) return;
+    container.innerHTML = '<div style="color:rgba(220,220,235,0.3);text-align:center;padding:20px;">Loading...</div>';
+    try {
+        const res  = await apiFetch(`${API_BASE}/admin/signup_requests`);
+        const data = await res.json();
+        renderAdminRequests(data);
+        // Update sidebar admin dot
+        updateAdminDot(data.length);
+    } catch (e) {
+        container.innerHTML = `<div class="admin-empty-state"><i class="fa-solid fa-circle-exclamation"></i><p>Failed to load: ${e}</p></div>`;
+    }
+}
+
+// ── Render request cards ──────────────────────────────────────────────────────
+function renderAdminRequests(requests) {
+    const container = document.getElementById('admin-requests-list');
+    if (!container) return;
+
+    if (!requests || requests.length === 0) {
+        container.innerHTML = `
+            <div class="admin-empty-state">
+                <i class="fa-solid fa-inbox"></i>
+                <p>No pending signup requests</p>
+            </div>`;
+        return;
+    }
+
+    const roleIcons = { teacher: 'fa-chalkboard-user', student: 'fa-user-graduate' };
+    container.innerHTML = requests.map(req => {
+        const icon = roleIcons[req.role] || 'fa-user';
+        const date = req.requested_at ? new Date(req.requested_at).toLocaleString() : '';
+        return `
+            <div class="admin-req-card" id="req-card-${req.id}">
+                <div class="admin-req-avatar role-${req.role}">
+                    <i class="fa-solid ${icon}"></i>
+                </div>
+                <div class="admin-req-info">
+                    <div class="admin-req-username">${req.username}</div>
+                    <div class="admin-req-meta">
+                        Requesting as <strong style="color:var(--primary-light)">${req.role}</strong>
+                        ${date ? `&nbsp;·&nbsp;${date}` : ''}
+                    </div>
+                </div>
+                <div class="admin-req-actions">
+                    <button class="admin-approve-btn" onclick="approveRequest(${req.id}, '${req.username}', '${req.role}')">
+                        <i class="fa-solid fa-check"></i> Approve
+                    </button>
+                    <button class="admin-reject-btn" onclick="rejectRequest(${req.id}, '${req.username}')">
+                        <i class="fa-solid fa-xmark"></i> Reject
+                    </button>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+// ── Load active users ─────────────────────────────────────────────────────────
+async function loadAdminUsers() {
+    const tbody = document.getElementById('admin-users-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:24px;color:rgba(220,220,235,0.3);">Loading...</td></tr>';
+    try {
+        const res  = await apiFetch(`${API_BASE}/admin/all_users`);
+        const data = await res.json();
+        renderAdminUsers(data);
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:24px;color:#e05252;">Failed: ${e}</td></tr>`;
+    }
+}
+
+// ── Render users table ────────────────────────────────────────────────────────
+function renderAdminUsers(users) {
+    const tbody = document.getElementById('admin-users-tbody');
+    if (!tbody) return;
+    const myId = parseInt(localStorage.getItem('loggedInUserId'));
+
+    if (!users || users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:32px;color:rgba(220,220,235,0.25);">No users found</td></tr>';
+        return;
+    }
+
+    const pillMap = { admin: 'pill-admin', teacher: 'pill-teacher', student: 'pill-student' };
+    const iconMap = { admin: 'fa-shield-halved', teacher: 'fa-chalkboard', student: 'fa-user-graduate' };
+
+    tbody.innerHTML = users.map(u => {
+        const isMe = u.id === myId;
+        const pill = pillMap[u.role] || 'pill-teacher';
+        const icon = iconMap[u.role] || 'fa-user';
+        const deleteBtn = (!isMe && u.role !== 'admin')
+            ? `<button onclick="deleteUser(${u.id}, '${u.username}')" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(224,82,82,0.4);background:rgba(224,82,82,0.08);color:#e05252;cursor:pointer;font-size:0.8rem;font-weight:600;transition:all 0.2s;" onmouseover="this.style.background='#e05252';this.style.color='white';" onmouseout="this.style.background='rgba(224,82,82,0.08)';this.style.color='#e05252';"><i class='fa-solid fa-trash'></i></button>`
+            : `<span style="color:rgba(220,220,235,0.2);font-size:0.8rem;">${isMe ? '(You)' : '—'}</span>`;
+        return `
+            <tr>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:0.85rem;color:rgba(220,220,235,0.4);">
+                            <i class="fa-solid ${icon}"></i>
+                        </div>
+                        <span style="font-weight:500;">${u.username}${isMe ? ' <span style="font-size:0.72rem;color:rgba(220,220,235,0.35);">(you)</span>' : ''}</span>
+                    </div>
+                </td>
+                <td><span class="role-badge-pill ${pill}"><i class="fa-solid ${icon}"></i> ${u.role}</span></td>
+                <td style="text-align:center;">${deleteBtn}</td>
+            </tr>`;
+    }).join('');
+}
+
+// ── Approve a signup request ──────────────────────────────────────────────────
+window.approveRequest = async function(id, username, role) {
+    const card = document.getElementById(`req-card-${id}`);
+    if (card) card.classList.add('req-approving');
+    try {
+        const res  = await apiFetch(`${API_BASE}/admin/approve_request/${id}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`${username} approved as ${role}!`, 'success');
+            await loadAdminPage();
+        } else {
+            showToast(data.error || 'Approval failed', 'error');
+            if (card) card.classList.remove('req-approving');
+        }
+    } catch (e) {
+        showToast('API Error: ' + e, 'error');
+        if (card) card.classList.remove('req-approving');
+    }
+};
+
+// ── Reject a signup request ───────────────────────────────────────────────────
+window.rejectRequest = async function(id, username) {
+    const confirmed = await showConfirm(
+        `Reject signup request from "${username}"? They will need to re-register.`,
+        'Reject Request', 'Reject'
+    );
+    if (!confirmed) return;
+    const card = document.getElementById(`req-card-${id}`);
+    if (card) card.classList.add('req-rejecting');
+    try {
+        const res  = await apiFetch(`${API_BASE}/admin/reject_request/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`${username}'s request rejected.`, 'warning');
+            await loadAdminPage();
+        } else {
+            showToast(data.error || 'Rejection failed', 'error');
+            if (card) card.classList.remove('req-rejecting');
+        }
+    } catch (e) {
+        showToast('API Error: ' + e, 'error');
+        if (card) card.classList.remove('req-rejecting');
+    }
+};
+
+// ── Delete an active user ─────────────────────────────────────────────────────
+window.deleteUser = async function(userId, username) {
+    const confirmed = await showConfirm(
+        `Delete user "${username}" permanently? All their data will remain but they will lose access.`,
+        'Delete User', 'Delete'
+    );
+    if (!confirmed) return;
+    try {
+        const res  = await apiFetch(`${API_BASE}/admin/delete_user/${userId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`User "${username}" deleted.`, 'warning');
+            await loadAdminUsers();
+        } else {
+            showToast(data.error || 'Delete failed', 'error');
+        }
+    } catch (e) {
+        showToast('API Error: ' + e, 'error');
+    }
+};
+
+// ── Update admin sidebar dot (shows pending count) ────────────────────────────
+function updateAdminDot(count) {
+    const navItem = document.getElementById('admin-nav-item');
+    if (!navItem) return;
+    let dot = navItem.querySelector('.admin-dot');
+    if (count > 0) {
+        if (!dot) {
+            dot = document.createElement('span');
+            dot.className = 'admin-dot';
+            navItem.appendChild(dot);
+        }
+        dot.title = `${count} pending request${count > 1 ? 's' : ''}`;
+    } else {
+        if (dot) dot.remove();
+    }
+}
+
+// ── Admin nav click handler ───────────────────────────────────────────────────
+document.getElementById('admin-nav-item').addEventListener('click', () => {
+    loadAdminPage();
+});
+
+// ── Refresh button ────────────────────────────────────────────────────────────
+document.getElementById('admin-refresh-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('admin-refresh-btn');
+    setButtonLoading(btn, true);
+    await loadAdminPage();
+    setButtonLoading(btn, false);
+    showToast('Admin panel refreshed', 'info');
+});
+

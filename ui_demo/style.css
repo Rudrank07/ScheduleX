@@ -2455,3 +2455,824 @@ table td:last-child {
     border-radius: 50%;
     flex-shrink: 0;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   ELITE UPGRADE STYLES — ScheduleX Premium
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Plus Jakarta Sans for headings ── */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+h1, h2, h3, .gen-title, .dash-hero-text h1, .stat-info p {
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TOAST NOTIFICATION SYSTEM
+   ══════════════════════════════════════════════════════════════ */
+#toast-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+    min-width: 280px;
+    max-width: 380px;
+    pointer-events: all;
+    animation: toastIn 0.35s cubic-bezier(0.22,1,0.36,1) both;
+    font-family: 'Inter', sans-serif;
+}
+
+.toast.toast-exit {
+    animation: toastOut 0.3s ease forwards;
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(60px) scale(0.94); }
+    to   { opacity: 1; transform: translateX(0)   scale(1); }
+}
+@keyframes toastOut {
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to   { opacity: 0; transform: translateX(60px) scale(0.94); }
+}
+
+.toast-success {
+    background: rgba(0, 184, 148, 0.15);
+    border: 1px solid rgba(0, 184, 148, 0.35);
+}
+.toast-error {
+    background: rgba(224, 82, 82, 0.15);
+    border: 1px solid rgba(224, 82, 82, 0.35);
+}
+.toast-info {
+    background: rgba(124, 110, 245, 0.15);
+    border: 1px solid rgba(124, 110, 245, 0.35);
+}
+.toast-warning {
+    background: rgba(253, 203, 110, 0.12);
+    border: 1px solid rgba(253, 203, 110, 0.35);
+}
+
+.toast-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.toast-success .toast-icon { color: #00b894; }
+.toast-error   .toast-icon { color: #e05252; }
+.toast-info    .toast-icon { color: #a29bfe; }
+.toast-warning .toast-icon { color: #fdcb6e; }
+
+.toast-body { flex: 1; }
+.toast-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    margin-bottom: 2px;
+}
+.toast-success .toast-title { color: #00b894; }
+.toast-error   .toast-title { color: #e05252; }
+.toast-info    .toast-title { color: #a29bfe; }
+.toast-warning .toast-title { color: #fdcb6e; }
+
+.toast-msg {
+    font-size: 0.88rem;
+    color: rgba(220,220,235,0.8);
+    line-height: 1.45;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: rgba(220,220,235,0.3);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color 0.2s;
+}
+.toast-close:hover { color: rgba(220,220,235,0.7); }
+
+.toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    border-radius: 0 0 14px 14px;
+    animation: toastProgress linear forwards;
+}
+.toast { position: relative; overflow: hidden; }
+.toast-success .toast-progress { background: #00b894; }
+.toast-error   .toast-progress { background: #e05252; }
+.toast-info    .toast-progress { background: #a29bfe; }
+.toast-warning .toast-progress { background: #fdcb6e; }
+
+@keyframes toastProgress {
+    from { width: 100%; }
+    to   { width: 0%; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CUSTOM CONFIRM MODAL
+   ══════════════════════════════════════════════════════════════ */
+#custom-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99998;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#custom-confirm-overlay.active {
+    display: flex;
+    animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.confirm-card {
+    background: rgba(14, 14, 22, 0.96);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 32px 28px 24px;
+    max-width: 400px;
+    width: 92%;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07);
+    animation: scaleIn 0.28s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.confirm-icon-wrap {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: rgba(224, 82, 82, 0.15);
+    border: 1px solid rgba(224, 82, 82, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+.confirm-icon-wrap i {
+    font-size: 1.4rem;
+    color: #e05252;
+}
+
+.confirm-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 8px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.confirm-msg {
+    font-size: 0.9rem;
+    color: rgba(220,220,235,0.6);
+    line-height: 1.55;
+    margin-bottom: 24px;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.confirm-actions button {
+    flex: 1;
+    padding: 11px 16px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+#confirm-cancel-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: var(--dark);
+}
+#confirm-cancel-btn:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+#confirm-ok-btn {
+    background: #e05252;
+    border: none;
+    color: white;
+    box-shadow: 0 4px 15px rgba(224,82,82,0.3);
+}
+#confirm-ok-btn:hover {
+    background: #c0392b;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(224,82,82,0.45);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CUSTOM PROMPT MODAL (replaces native prompt())
+   ══════════════════════════════════════════════════════════════ */
+#custom-prompt-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99997;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#custom-prompt-overlay.active { display: flex; animation: fadeIn 0.2s ease; }
+.prompt-card {
+    background: rgba(14,14,22,0.96);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 28px;
+    max-width: 420px;
+    width: 92%;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07);
+    animation: scaleIn 0.28s cubic-bezier(0.22,1,0.36,1) both;
+}
+.prompt-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--primary-light);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.prompt-input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    color: var(--dark);
+    font-size: 1rem;
+    font-family: inherit;
+    outline: none;
+    margin-bottom: 18px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+.prompt-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(124,110,245,0.2);
+}
+.prompt-actions { display: flex; gap: 10px; }
+.prompt-actions button { flex: 1; padding: 11px; border-radius: 10px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.2s; }
+#prompt-cancel-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--dark); }
+#prompt-ok-btn { background: var(--primary); border: none; color: white; box-shadow: 0 4px 15px rgba(124,110,245,0.3); }
+#prompt-ok-btn:hover { background: #5b4cc4; transform: translateY(-1px); }
+
+/* ══════════════════════════════════════════════════════════════
+   SIDEBAR USER INFO STRIP
+   ══════════════════════════════════════════════════════════════ */
+.sidebar-user-strip {
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: auto;
+}
+
+.sidebar-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(124,110,245,0.25), rgba(0,206,201,0.15));
+    border: 1px solid rgba(124,110,245,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: var(--primary-light);
+    flex-shrink: 0;
+}
+
+.sidebar-user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.sidebar-username {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 3px;
+}
+.sidebar-role-badge.role-teacher {
+    background: rgba(124,110,245,0.18);
+    color: var(--primary-light);
+    border: 1px solid rgba(124,110,245,0.3);
+}
+.sidebar-role-badge.role-student {
+    background: rgba(0,206,201,0.15);
+    color: var(--secondary);
+    border: 1px solid rgba(0,206,201,0.3);
+}
+
+@media (max-width: 900px) {
+    .sidebar-user-strip { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ROLE BADGE IN HEADER
+   ══════════════════════════════════════════════════════════════ */
+.header-role-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 9px;
+    border-radius: 20px;
+}
+.header-role-badge.role-teacher {
+    background: rgba(124,110,245,0.18);
+    color: var(--primary-light);
+    border: 1px solid rgba(124,110,245,0.3);
+}
+.header-role-badge.role-student {
+    background: rgba(0,206,201,0.12);
+    color: var(--secondary);
+    border: 1px solid rgba(0,206,201,0.3);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TIMETABLE DAY-COLUMN COLORS
+   ══════════════════════════════════════════════════════════════ */
+table th.day-mon { border-top: 2px solid rgba(162,155,254,0.5); }
+table th.day-tue { border-top: 2px solid rgba(0,206,201,0.5); }
+table th.day-wed { border-top: 2px solid rgba(253,121,168,0.5); }
+table th.day-thu { border-top: 2px solid rgba(253,203,110,0.5); }
+table th.day-fri { border-top: 2px solid rgba(0,184,148,0.5); }
+table th.day-sat { border-top: 2px solid rgba(116,185,255,0.5); }
+
+table td.day-mon { border-right-color: rgba(162,155,254,0.06); }
+table td.day-tue { border-right-color: rgba(0,206,201,0.06); }
+table td.day-wed { border-right-color: rgba(253,121,168,0.06); }
+table td.day-thu { border-right-color: rgba(253,203,110,0.06); }
+table td.day-fri { border-right-color: rgba(0,184,148,0.06); }
+table td.day-sat { border-right-color: rgba(116,185,255,0.06); }
+
+/* Sticky first column */
+#timetable th:first-child,
+#timetable td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: rgba(10, 8, 30, 0.95);
+    backdrop-filter: blur(8px);
+}
+#timetable th:first-child {
+    z-index: 3;
+}
+
+/* Break row styling */
+.break-cell {
+    background: rgba(253,203,110,0.07) !important;
+    border: 1px solid rgba(253,203,110,0.12) !important;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: rgba(253,203,110,0.7);
+    font-size: 0.82rem;
+    font-weight: 600;
+    min-height: 36px;
+    letter-spacing: 0.5px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ATTENDANCE PROGRESS BARS
+   ══════════════════════════════════════════════════════════════ */
+.att-pct-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 100px;
+}
+.att-pct-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.att-pct-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s cubic-bezier(0.22,1,0.36,1);
+}
+.att-pct-fill.pct-high  { background: linear-gradient(90deg, #00b894, #00cec9); }
+.att-pct-fill.pct-mid   { background: linear-gradient(90deg, #fdcb6e, #e17055); }
+.att-pct-fill.pct-low   { background: linear-gradient(90deg, #e05252, #d63031); }
+.att-pct-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    min-width: 38px;
+    text-align: right;
+}
+.att-pct-label.pct-high { color: #00b894; }
+.att-pct-label.pct-mid  { color: #fdcb6e; }
+.att-pct-label.pct-low  { color: #e05252; }
+
+/* ══════════════════════════════════════════════════════════════
+   BUTTON LOADING STATE
+   ══════════════════════════════════════════════════════════════ */
+.btn-loading {
+    opacity: 0.75;
+    pointer-events: none;
+    position: relative;
+}
+.btn-loading::before {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+.btn-loading span, .btn-loading i { opacity: 0; }
+
+/* ══════════════════════════════════════════════════════════════
+   PAGE CROSS-FADE TRANSITION
+   ══════════════════════════════════════════════════════════════ */
+.page {
+    transition: opacity 0.22s ease;
+}
+.page.page-fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ENHANCED LOGIN BACKGROUND ANIMATION
+   ══════════════════════════════════════════════════════════════ */
+#login-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(ellipse at 20% 20%, rgba(124,110,245,0.18) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 80%, rgba(0,206,201,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 60% 10%, rgba(253,121,168,0.08) 0%, transparent 45%);
+    animation: loginBgShift 8s ease-in-out infinite alternate;
+    pointer-events: none;
+}
+
+@keyframes loginBgShift {
+    0%   { filter: hue-rotate(0deg) brightness(1); }
+    100% { filter: hue-rotate(15deg) brightness(1.08); }
+}
+
+/* Floating particles */
+.login-particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    animation: particleFloat linear infinite;
+}
+
+@keyframes particleFloat {
+    0%   { opacity: 0; transform: translateY(0) scale(0.8); }
+    10%  { opacity: 0.6; }
+    90%  { opacity: 0.4; }
+    100% { opacity: 0; transform: translateY(-80vh) scale(1.2) rotate(45deg); }
+}
+
+/* Login card upgrade */
+.login-card {
+    position: relative;
+    z-index: 1;
+}
+
+.login-brand-logo {
+    width: 52px;
+    height: 52px;
+    background: linear-gradient(135deg, #6C5CE7 0%, #00cec9 100%);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: white;
+    box-shadow: 0 8px 24px rgba(108,92,231,0.5);
+    animation: glowPulse 3s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   4TH STAT CARD — TIME SLOTS (orange/amber theme)
+   ══════════════════════════════════════════════════════════════ */
+.stat-amber .stat-glow   { background: #fdcb6e; }
+.stat-amber .stat-icon-wrap {
+    background: rgba(253,203,110,0.12);
+    box-shadow: 0 0 24px rgba(253,203,110,0.2);
+}
+.stat-amber .stat-icon-wrap i { color: #fdcb6e; }
+.stat-amber { border-top: 2px solid rgba(253,203,110,0.4); }
+
+/* ══════════════════════════════════════════════════════════════
+   LIVE CLOCK WIDGET (dashboard hero)
+   ══════════════════════════════════════════════════════════════ */
+.dash-clock {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-top: 16px;
+}
+.dash-clock-time {
+    font-size: 1.5rem;
+    font-weight: 800;
+    font-family: 'Plus Jakarta Sans', monospace;
+    background: linear-gradient(135deg, #a29bfe, #00cec9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+    line-height: 1;
+}
+.dash-clock-date {
+    font-size: 0.75rem;
+    color: rgba(220,220,235,0.4);
+    margin-top: 3px;
+    font-weight: 500;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HISTORY PAGE POLISH
+   ══════════════════════════════════════════════════════════════ */
+.history-empty {
+    text-align: center;
+    padding: 48px 20px;
+    color: rgba(220,220,235,0.25);
+}
+.history-empty i {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    display: block;
+    opacity: 0.4;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE TOAST ADJUSTMENTS
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+    #toast-container {
+        top: auto;
+        bottom: 80px;
+        right: 12px;
+        left: 12px;
+    }
+    .toast { max-width: 100%; min-width: 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ADMIN PANEL STYLES
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Admin Nav Item glow ────────────────────────────────────── */
+#admin-nav-item {
+    position: relative;
+}
+#admin-nav-item.active {
+    background: linear-gradient(90deg, rgba(253,203,110,0.12), rgba(253,121,168,0.08));
+}
+#admin-nav-item i { color: #fdcb6e !important; }
+
+/* ── Request Cards ──────────────────────────────────────────── */
+.admin-req-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 10px;
+    transition: background 0.2s, border-color 0.2s, transform 0.25s;
+    animation: fadeInUp 0.3s ease both;
+}
+.admin-req-card:hover {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(253,203,110,0.2);
+}
+.admin-req-card.req-approving {
+    border-color: rgba(0,184,148,0.4);
+    background: rgba(0,184,148,0.08);
+    transform: scale(0.98);
+}
+.admin-req-card.req-rejecting {
+    border-color: rgba(224,82,82,0.4);
+    background: rgba(224,82,82,0.08);
+    transform: scale(0.98);
+}
+
+.admin-req-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.admin-req-avatar.role-teacher {
+    background: rgba(124,110,245,0.18);
+    color: var(--primary-light);
+    border: 1px solid rgba(124,110,245,0.3);
+}
+.admin-req-avatar.role-student {
+    background: rgba(0,206,201,0.12);
+    color: var(--secondary);
+    border: 1px solid rgba(0,206,201,0.3);
+}
+
+.admin-req-info { flex: 1; min-width: 0; }
+.admin-req-username {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.admin-req-meta {
+    font-size: 0.78rem;
+    color: rgba(220,220,235,0.4);
+    margin-top: 2px;
+}
+
+.admin-req-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.admin-approve-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(0,184,148,0.4);
+    background: rgba(0,184,148,0.1);
+    color: #00b894;
+    font-weight: 700;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.admin-approve-btn:hover {
+    background: #00b894;
+    color: white;
+    box-shadow: 0 4px 14px rgba(0,184,148,0.35);
+    transform: translateY(-1px);
+}
+
+.admin-reject-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(224,82,82,0.4);
+    background: rgba(224,82,82,0.08);
+    color: #e05252;
+    font-weight: 700;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.admin-reject-btn:hover {
+    background: #e05252;
+    color: white;
+    box-shadow: 0 4px 14px rgba(224,82,82,0.3);
+    transform: translateY(-1px);
+}
+
+/* ── Role badge (in user table) ─────────────────────────────── */
+.role-badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.role-badge-pill.pill-admin {
+    background: rgba(253,203,110,0.15);
+    color: #fdcb6e;
+    border: 1px solid rgba(253,203,110,0.35);
+}
+.role-badge-pill.pill-teacher {
+    background: rgba(124,110,245,0.15);
+    color: var(--primary-light);
+    border: 1px solid rgba(124,110,245,0.3);
+}
+.role-badge-pill.pill-student {
+    background: rgba(0,206,201,0.12);
+    color: var(--secondary);
+    border: 1px solid rgba(0,206,201,0.3);
+}
+
+/* ── User table rows ────────────────────────────────────────── */
+#admin-users-tbody tr {
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    transition: background 0.15s;
+}
+#admin-users-tbody tr:hover { background: rgba(255,255,255,0.04); }
+#admin-users-tbody td { padding: 12px 12px; color: var(--dark); }
+
+/* ── Empty state ────────────────────────────────────────────── */
+.admin-empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(220,220,235,0.25);
+}
+.admin-empty-state i {
+    font-size: 2.2rem;
+    display: block;
+    margin-bottom: 10px;
+    opacity: 0.35;
+}
+.admin-empty-state p {
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* ── Pending badge on requests count ───────────────────────── */
+.admin-pending-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 20px;
+    background: #fdcb6e;
+    color: #1a1a2e;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 0 6px;
+    margin-left: 6px;
+    animation: glowPulse 2.5s ease-in-out infinite;
+}
+
+/* ── Sidebar admin item pending dot ─────────────────────────── */
+#admin-nav-item .admin-dot {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fdcb6e;
+    box-shadow: 0 0 8px rgba(253,203,110,0.7);
+    animation: glowPulse 2s ease-in-out infinite;
+}

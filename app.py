@@ -640,16 +640,22 @@ def login():
         
     try:
         cursor = conn.cursor()
+        # Check active users
         cursor.execute(
             "SELECT id, role FROM admins WHERE username = ? AND password = ?",
             (username, password)
         )
         admin = cursor.fetchone()
         if admin:
-            # Return id so the frontend can store it as loggedInUserId
             return jsonify({'success': True, 'message': 'Authenticated', 'role': admin['role'], 'id': admin['id']}), 200
-        else:
-            return jsonify({'error': 'Invalid credentials'}), 401
+
+        # Check if they are in the pending signup_requests queue
+        cursor.execute("SELECT id, role FROM signup_requests WHERE username = ?", (username,))
+        pending = cursor.fetchone()
+        if pending:
+            return jsonify({'error': 'Your account is pending admin approval. Please wait.'}), 403
+
+        return jsonify({'error': 'Invalid credentials'}), 401
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
@@ -661,34 +667,181 @@ def register():
     if not data or 'username' not in data or 'password' not in data:
         return jsonify({'error': 'Username and password required'}), 400
         
-    username = data['username']
+    username = data['username'].strip()
     password = data['password']
     
+    if not username:
+        return jsonify({'error': 'Username cannot be empty'}), 400
+
+    # Block registering as admin via public endpoint
+    role = data.get('role', 'teacher')
+    if role not in ['teacher', 'student']:
+        role = 'student'
+
     conn = get_db_connection()
     if not conn:
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
         cursor = conn.cursor()
-        # Check if username exists
+        # Check if username already exists in active users
         cursor.execute("SELECT id FROM admins WHERE username = ?", (username,))
         if cursor.fetchone():
             return jsonify({'error': 'Username already exists!'}), 400
-            
-        role = data.get('role', 'student')
-        if role not in ['teacher', 'student']:
-            role = 'student'
 
-        cursor.close()
-        cursor = conn.cursor()
+        # Check if already in pending queue
+        cursor.execute("SELECT id FROM signup_requests WHERE username = ?", (username,))
+        if cursor.fetchone():
+            return jsonify({'error': 'A signup request for this username is already pending admin approval.'}), 400
+
+        # Insert into pending signup_requests instead of active users
         cursor.execute(
-            "INSERT INTO admins (username, password, role) VALUES (?, ?, ?)",
+            "INSERT INTO signup_requests (username, password, role) VALUES (?, ?, ?)",
             (username, password, role)
         )
-        new_id = cursor.lastrowid
         conn.commit()
-        # Return id so the frontend can store it as loggedInUserId
-        return jsonify({'success': True, 'message': 'Registered successfully', 'role': role, 'id': new_id}), 201
+        return jsonify({'success': True, 'pending': True, 'message': 'Signup request submitted. Please wait for admin approval.', 'role': role}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        _close(conn, cursor)
+
+
+# ── Admin helper ──────────────────────────────────────────────────────────────
+def require_admin():
+    """Returns (user_id, None) if the caller is an admin, else (None, error_response)."""
+    uid = get_current_user_id()
+    if uid is None:
+        return None, (jsonify({'error': 'Authentication required'}), 401)
+    conn = get_db_connection()
+    if not conn:
+        return None, (jsonify({'error': 'Database connection failed'}), 500)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT role FROM admins WHERE id = ?", (uid,))
+        row = cursor.fetchone()
+        if not row or row['role'] != 'admin':
+            return None, (jsonify({'error': 'Admin access required'}), 403)
+        return uid, None
+    except Exception as e:
+        return None, (jsonify({'error': str(e)}), 500)
+    finally:
+        _close(conn, cursor)
+
+
+# ── Admin: list pending signup requests ───────────────────────────────────────
+@app.route('/admin/signup_requests', methods=['GET'])
+def admin_get_signup_requests():
+    _, err = require_admin()
+    if err: return err
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, role, requested_at FROM signup_requests ORDER BY requested_at DESC")
+        rows = cursor.fetchall()
+        return jsonify([dict(r) for r in rows]), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        _close(conn, cursor)
+
+
+# ── Admin: approve a signup request ──────────────────────────────────────────
+@app.route('/admin/approve_request/<int:req_id>', methods=['POST'])
+def admin_approve_request(req_id):
+    _, err = require_admin()
+    if err: return err
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT username, password, role FROM signup_requests WHERE id = ?", (req_id,))
+        req = cursor.fetchone()
+        if not req:
+            return jsonify({'error': 'Request not found'}), 404
+        # Move to active users
+        try:
+            cursor.execute(
+                "INSERT INTO admins (username, password, role) VALUES (?, ?, ?)",
+                (req['username'], req['password'], req['role'])
+            )
+        except sqlite3.IntegrityError:
+            return jsonify({'error': 'Username already taken by another user'}), 409
+        cursor.execute("DELETE FROM signup_requests WHERE id = ?", (req_id,))
+        conn.commit()
+        return jsonify({'success': True, 'message': f"{req['username']} approved as {req['role']}"}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        _close(conn, cursor)
+
+
+# ── Admin: reject a signup request ────────────────────────────────────────────
+@app.route('/admin/reject_request/<int:req_id>', methods=['DELETE'])
+def admin_reject_request(req_id):
+    _, err = require_admin()
+    if err: return err
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT username FROM signup_requests WHERE id = ?", (req_id,))
+        req = cursor.fetchone()
+        if not req:
+            return jsonify({'error': 'Request not found'}), 404
+        cursor.execute("DELETE FROM signup_requests WHERE id = ?", (req_id,))
+        conn.commit()
+        return jsonify({'success': True, 'message': f"{req['username']}'s request rejected"}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        _close(conn, cursor)
+
+
+# ── Admin: list all active users ──────────────────────────────────────────────
+@app.route('/admin/all_users', methods=['GET'])
+def admin_all_users():
+    _, err = require_admin()
+    if err: return err
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, role FROM admins ORDER BY role, username")
+        rows = cursor.fetchall()
+        return jsonify([dict(r) for r in rows]), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        _close(conn, cursor)
+
+
+# ── Admin: delete/deactivate a user ──────────────────────────────────────────
+@app.route('/admin/delete_user/<int:user_id>', methods=['DELETE'])
+def admin_delete_user(user_id):
+    admin_id, err = require_admin()
+    if err: return err
+    if admin_id == user_id:
+        return jsonify({'error': 'Cannot delete your own admin account'}), 400
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT username, role FROM admins WHERE id = ?", (user_id,))
+        u = cursor.fetchone()
+        if not u:
+            return jsonify({'error': 'User not found'}), 404
+        if u['role'] == 'admin':
+            return jsonify({'error': 'Cannot delete another admin account'}), 403
+        cursor.execute("DELETE FROM admins WHERE id = ?", (user_id,))
+        conn.commit()
+        return jsonify({'success': True, 'message': f"User '{u['username']}' deleted"}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:

@@ -28,9 +28,16 @@ def setup_database():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL,
-                role TEXT DEFAULT 'teacher' CHECK (role IN ('teacher', 'student'))
+                role TEXT DEFAULT 'teacher'
             );
-            INSERT OR IGNORE INTO admins (username, password) VALUES ('admin', 'password123');
+            CREATE TABLE IF NOT EXISTS signup_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role TEXT DEFAULT 'teacher',
+                requested_at TEXT DEFAULT (datetime('now'))
+            );
+            INSERT OR IGNORE INTO admins (username, password, role) VALUES ('admin', 'admin123', 'admin');
             CREATE TABLE IF NOT EXISTS teachers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
