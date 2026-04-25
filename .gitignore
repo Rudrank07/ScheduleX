@@ -31,3 +31,5 @@ env/
 dist/
 build/
 *.egg-info/
+timetable.db
+*.db

@@ -1,12 +1,19 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from db_config import get_db_connection, setup_database, dict_cursor, _close
+from db_config import get_db_connection, setup_database, _close
 import json
 import os
-import psycopg2
-import psycopg2.extras
+import sqlite3
+from flask.json.provider import DefaultJSONProvider
+
+class _SQLiteJSON(DefaultJSONProvider):
+    def default(self, o):
+        if isinstance(o, __import__("sqlite3").Row): return dict(o)
+        return super().default(o)
 
 app = Flask(__name__)
+app.json_provider_class = _SQLiteJSON
+app.json = _SQLiteJSON(app)
 # Enable CORS for all routes so the frontend can connect
 CORS(app)
 
@@ -66,11 +73,11 @@ def add_teacher():
         
     try:
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO teachers (name, user_id) VALUES (%s, %s) RETURNING id", (name, user_id))
-        new_id = cursor.fetchone()[0]
+        cursor.execute("INSERT INTO teachers (name, user_id) VALUES (?, ?)", (name, user_id))
+        new_id = cursor.lastrowid
         conn.commit()
         return jsonify({'success': True, 'message': 'Teacher added successfully', 'id': new_id}), 201
-    except psycopg2.IntegrityError:
+    except sqlite3.IntegrityError:
         return jsonify({'error': 'Teacher already exists'}), 409
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -87,8 +94,8 @@ def get_teachers():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = dict_cursor(conn)
-        cursor.execute("SELECT * FROM teachers WHERE user_id = %s", (user_id,))
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM teachers WHERE user_id = ?", (user_id,))
         teachers = cursor.fetchall()
         return jsonify(teachers), 200
     except Exception as e:
@@ -106,7 +113,7 @@ def delete_teacher(id):
         return jsonify({'error': 'Database connection failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM teachers WHERE id = %s AND user_id = %s", (id, user_id))
+        cursor.execute("DELETE FROM teachers WHERE id = ? AND user_id = ?", (id, user_id))
         conn.commit()
         return jsonify({'success': True, 'message': 'Deleted successfully'}), 200
     except Exception as e:
@@ -144,13 +151,13 @@ def add_subject():
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO subjects (name, weekly_hours, is_lab, user_id) VALUES (%s, %s, %s, %s) RETURNING id",
+            "INSERT INTO subjects (name, weekly_hours, is_lab, user_id) VALUES (?, ?, ?, ?)",
             (name, weekly_hours, is_lab, user_id)
         )
-        new_id = cursor.fetchone()[0]
+        new_id = cursor.lastrowid
         conn.commit()
         return jsonify({'success': True, 'message': 'Subject added successfully', 'id': new_id, 'is_lab': is_lab}), 201
-    except psycopg2.IntegrityError:
+    except sqlite3.IntegrityError:
         return jsonify({'error': 'Subject already exists'}), 409
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -167,8 +174,8 @@ def get_subjects():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = dict_cursor(conn)
-        cursor.execute("SELECT * FROM subjects WHERE user_id = %s", (user_id,))
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM subjects WHERE user_id = ?", (user_id,))
         subjects = cursor.fetchall()
         return jsonify(subjects), 200
     except Exception as e:
@@ -186,7 +193,7 @@ def delete_subject(id):
         return jsonify({'error': 'Database connection failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM subjects WHERE id = %s AND user_id = %s", (id, user_id))
+        cursor.execute("DELETE FROM subjects WHERE id = ? AND user_id = ?", (id, user_id))
         conn.commit()
         return jsonify({'success': True, 'message': 'Deleted successfully'}), 200
     except Exception as e:
@@ -213,7 +220,7 @@ def update_subject(id):
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE subjects SET weekly_hours = %s WHERE id = %s AND user_id = %s",
+            "UPDATE subjects SET weekly_hours = ? WHERE id = ? AND user_id = ?",
             (int(weekly_hours), id, user_id)
         )
         conn.commit()
@@ -246,11 +253,11 @@ def add_class():
         
     try:
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO classes (class_name, user_id) VALUES (%s, %s) RETURNING id", (class_name, user_id))
-        new_id = cursor.fetchone()[0]
+        cursor.execute("INSERT INTO classes (class_name, user_id) VALUES (?, ?)", (class_name, user_id))
+        new_id = cursor.lastrowid
         conn.commit()
         return jsonify({'success': True, 'message': 'Class added successfully', 'id': new_id}), 201
-    except psycopg2.IntegrityError:
+    except sqlite3.IntegrityError:
         return jsonify({'error': 'Class already exists'}), 409
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -267,8 +274,8 @@ def get_classes():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = dict_cursor(conn)
-        cursor.execute("SELECT * FROM classes WHERE user_id = %s", (user_id,))
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM classes WHERE user_id = ?", (user_id,))
         classes = cursor.fetchall()
         return jsonify(classes), 200
     except Exception as e:
@@ -286,7 +293,7 @@ def delete_class(id):
         return jsonify({'error': 'Database connection failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM classes WHERE id = %s AND user_id = %s", (id, user_id))
+        cursor.execute("DELETE FROM classes WHERE id = ? AND user_id = ?", (id, user_id))
         conn.commit()
         return jsonify({'success': True, 'message': 'Deleted successfully'}), 200
     except Exception as e:
@@ -320,12 +327,12 @@ def assign_teacher():
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO teacher_subject (teacher_id, subject_id, class_id, user_id) 
-            VALUES (%s, %s, %s, %s)
+            VALUES (?, ?, ?, ?)
         """, (teacher_id, subject_id, class_id, user_id))
-        new_id = cursor.fetchone()[0]
+        new_id = cursor.lastrowid
         conn.commit()
         return jsonify({'success': True, 'message': 'Assigned successfully', 'id': new_id}), 201
-    except psycopg2.IntegrityError as e:
+    except sqlite3.IntegrityError as e:
         if "foreign key constraint fails" in str(e).lower():
             return jsonify({'error': 'Invalid teacher_id, subject_id, or class_id - record does not exist'}), 400
         return jsonify({'error': 'Assignment already exists or constraints violated', 'details': str(e)}), 409
@@ -344,7 +351,7 @@ def get_teacher_subject():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = dict_cursor(conn)
+        cursor = conn.cursor()
         query = """
             SELECT ts.id, ts.teacher_id, t.name as teacher_name, 
                    ts.subject_id, s.name as subject_name,
@@ -353,7 +360,7 @@ def get_teacher_subject():
             JOIN teachers t ON ts.teacher_id = t.id
             JOIN subjects s ON ts.subject_id = s.id
             LEFT JOIN classes c ON ts.class_id = c.id
-            WHERE ts.user_id = %s
+            WHERE ts.user_id = ?
         """
         cursor.execute(query, (user_id,))
         assignments = [dict(r) for r in cursor.fetchall()]
@@ -373,7 +380,7 @@ def delete_assignment(id):
         return jsonify({'error': 'Database connection failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM teacher_subject WHERE id = %s AND user_id = %s", (id, user_id))
+        cursor.execute("DELETE FROM teacher_subject WHERE id = ? AND user_id = ?", (id, user_id))
         conn.commit()
         return jsonify({'success': True, 'message': 'Deleted successfully'}), 200
     except Exception as e:
@@ -403,10 +410,10 @@ def add_time_slot():
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO time_slots (start_time, end_time, is_break, user_id) VALUES (%s, %s, %s, %s) RETURNING id",
+            "INSERT INTO time_slots (start_time, end_time, is_break, user_id) VALUES (?, ?, ?, ?)",
             (start_time, end_time, is_break, user_id)
         )
-        new_id = cursor.fetchone()[0]
+        new_id = cursor.lastrowid
         conn.commit()
         return jsonify({'success': True, 'message': 'Time slot added', 'id': new_id}), 201
     except Exception as e:
@@ -424,8 +431,8 @@ def get_time_slots():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = dict_cursor(conn)
-        cursor.execute("SELECT * FROM time_slots WHERE user_id = %s ORDER BY start_time ASC", (user_id,))
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM time_slots WHERE user_id = ? ORDER BY start_time ASC", (user_id,))
         slots = cursor.fetchall()
         return jsonify(slots), 200
     except Exception as e:
@@ -443,7 +450,7 @@ def delete_time_slot(id):
         return jsonify({'error': 'Database connection failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM time_slots WHERE id = %s AND user_id = %s", (id, user_id))
+        cursor.execute("DELETE FROM time_slots WHERE id = ? AND user_id = ?", (id, user_id))
         conn.commit()
         return jsonify({'success': True, 'message': 'Deleted successfully'}), 200
     except Exception as e:
@@ -463,8 +470,8 @@ def get_timetables():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = dict_cursor(conn)
-        cursor.execute("SELECT * FROM generated_timetables WHERE user_id = %s", (user_id,))
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM generated_timetables WHERE user_id = ?", (user_id,))
         records = cursor.fetchall()
         timetables = {}
         for r in records:
@@ -495,8 +502,8 @@ def save_timetable():
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO generated_timetables (class_name, grid_data, user_id) 
-            VALUES (%s, %s, %s)
-            ON CONFLICT (class_name, user_id) DO UPDATE SET grid_data = EXCLUDED.grid_data
+            VALUES (?, ?, ?)
+            ON CONFLICT(class_name, user_id) DO UPDATE SET grid_data = excluded.grid_data
         """, (class_name, grid_data_json, user_id))
         conn.commit()
         return jsonify({'success': True, 'message': 'Timetable saved successfully'}), 200
@@ -515,7 +522,7 @@ def reset_timetables():
         return jsonify({'error': 'Database connection failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM generated_timetables WHERE user_id = %s", (user_id,))
+        cursor.execute("DELETE FROM generated_timetables WHERE user_id = ?", (user_id,))
         conn.commit()
         return jsonify({'success': True, 'message': 'All timetables reset successfully'}), 200
     except Exception as e:
@@ -534,14 +541,14 @@ def get_history():
     if not conn:
         return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = dict_cursor(conn)
+        cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, name, created_at FROM timetable_history WHERE user_id = %s ORDER BY created_at DESC",
+            "SELECT id, name, created_at FROM timetable_history WHERE user_id = ? ORDER BY created_at DESC",
             (user_id,)
         )
         records = cursor.fetchall()
         for r in records:
-            r['created_at'] = r['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            r['created_at'] = str(r['created_at'])[:19]
         return jsonify(records), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -557,8 +564,8 @@ def get_history_by_id(id):
     if not conn:
         return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = dict_cursor(conn)
-        cursor.execute("SELECT data FROM timetable_history WHERE id = %s AND user_id = %s", (id, user_id))
+        cursor = conn.cursor()
+        cursor.execute("SELECT data FROM timetable_history WHERE id = ? AND user_id = ?", (id, user_id))
         record = cursor.fetchone()
         if record:
             return jsonify(json.loads(record['data'])), 200
@@ -587,10 +594,10 @@ def save_history():
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO timetable_history (name, data, user_id) VALUES (%s, %s, %s) RETURNING id",
+            "INSERT INTO timetable_history (name, data, user_id) VALUES (?, ?, ?)",
             (name, json_data, user_id)
         )
-        new_id = cursor.fetchone()[0]
+        new_id = cursor.lastrowid
         conn.commit()
         return jsonify({'success': True, 'message': 'History saved successfully', 'id': new_id}), 201
     except Exception as e:
@@ -608,7 +615,7 @@ def delete_history(id):
         return jsonify({'error': 'Database connection failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM timetable_history WHERE id = %s AND user_id = %s", (id, user_id))
+        cursor.execute("DELETE FROM timetable_history WHERE id = ? AND user_id = ?", (id, user_id))
         conn.commit()
         return jsonify({'success': True, 'message': 'Deleted successfully'}), 200
     except Exception as e:
@@ -632,17 +639,23 @@ def login():
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = dict_cursor(conn)
+        cursor = conn.cursor()
+        # Check active users
         cursor.execute(
-            "SELECT id, role FROM admins WHERE username = %s AND password = %s",
+            "SELECT id, role FROM admins WHERE username = ? AND password = ?",
             (username, password)
         )
         admin = cursor.fetchone()
         if admin:
-            # Return id so the frontend can store it as loggedInUserId
             return jsonify({'success': True, 'message': 'Authenticated', 'role': admin['role'], 'id': admin['id']}), 200
-        else:
-            return jsonify({'error': 'Invalid credentials'}), 401
+
+        # Check if they are in the pending signup_requests queue
+        cursor.execute("SELECT id, role FROM signup_requests WHERE username = ?", (username,))
+        pending = cursor.fetchone()
+        if pending:
+            return jsonify({'error': 'Your account is pending admin approval. Please wait.'}), 403
+
+        return jsonify({'error': 'Invalid credentials'}), 401
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
@@ -654,34 +667,181 @@ def register():
     if not data or 'username' not in data or 'password' not in data:
         return jsonify({'error': 'Username and password required'}), 400
         
-    username = data['username']
+    username = data['username'].strip()
     password = data['password']
     
+    if not username:
+        return jsonify({'error': 'Username cannot be empty'}), 400
+
+    # Block registering as admin via public endpoint
+    role = data.get('role', 'teacher')
+    if role not in ['teacher', 'student']:
+        role = 'student'
+
     conn = get_db_connection()
     if not conn:
         return jsonify({'error': 'Database connection failed'}), 500
         
     try:
-        cursor = dict_cursor(conn)
-        # Check if username exists
-        cursor.execute("SELECT id FROM admins WHERE username = %s", (username,))
+        cursor = conn.cursor()
+        # Check if username already exists in active users
+        cursor.execute("SELECT id FROM admins WHERE username = ?", (username,))
         if cursor.fetchone():
             return jsonify({'error': 'Username already exists!'}), 400
-            
-        role = data.get('role', 'student')
-        if role not in ['teacher', 'student']:
-            role = 'student'
 
-        cursor.close()
-        cursor = conn.cursor()
+        # Check if already in pending queue
+        cursor.execute("SELECT id FROM signup_requests WHERE username = ?", (username,))
+        if cursor.fetchone():
+            return jsonify({'error': 'A signup request for this username is already pending admin approval.'}), 400
+
+        # Insert into pending signup_requests instead of active users
         cursor.execute(
-            "INSERT INTO admins (username, password, role) VALUES (%s, %s, %s) RETURNING id",
+            "INSERT INTO signup_requests (username, password, role) VALUES (?, ?, ?)",
             (username, password, role)
         )
-        new_id = cursor.fetchone()[0]
         conn.commit()
-        # Return id so the frontend can store it as loggedInUserId
-        return jsonify({'success': True, 'message': 'Registered successfully', 'role': role, 'id': new_id}), 201
+        return jsonify({'success': True, 'pending': True, 'message': 'Signup request submitted. Please wait for admin approval.', 'role': role}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        _close(conn, cursor)
+
+
+# ── Admin helper ──────────────────────────────────────────────────────────────
+def require_admin():
+    """Returns (user_id, None) if the caller is an admin, else (None, error_response)."""
+    uid = get_current_user_id()
+    if uid is None:
+        return None, (jsonify({'error': 'Authentication required'}), 401)
+    conn = get_db_connection()
+    if not conn:
+        return None, (jsonify({'error': 'Database connection failed'}), 500)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT role FROM admins WHERE id = ?", (uid,))
+        row = cursor.fetchone()
+        if not row or row['role'] != 'admin':
+            return None, (jsonify({'error': 'Admin access required'}), 403)
+        return uid, None
+    except Exception as e:
+        return None, (jsonify({'error': str(e)}), 500)
+    finally:
+        _close(conn, cursor)
+
+
+# ── Admin: list pending signup requests ───────────────────────────────────────
+@app.route('/admin/signup_requests', methods=['GET'])
+def admin_get_signup_requests():
+    _, err = require_admin()
+    if err: return err
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, role, requested_at FROM signup_requests ORDER BY requested_at DESC")
+        rows = cursor.fetchall()
+        return jsonify([dict(r) for r in rows]), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        _close(conn, cursor)
+
+
+# ── Admin: approve a signup request ──────────────────────────────────────────
+@app.route('/admin/approve_request/<int:req_id>', methods=['POST'])
+def admin_approve_request(req_id):
+    _, err = require_admin()
+    if err: return err
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT username, password, role FROM signup_requests WHERE id = ?", (req_id,))
+        req = cursor.fetchone()
+        if not req:
+            return jsonify({'error': 'Request not found'}), 404
+        # Move to active users
+        try:
+            cursor.execute(
+                "INSERT INTO admins (username, password, role) VALUES (?, ?, ?)",
+                (req['username'], req['password'], req['role'])
+            )
+        except sqlite3.IntegrityError:
+            return jsonify({'error': 'Username already taken by another user'}), 409
+        cursor.execute("DELETE FROM signup_requests WHERE id = ?", (req_id,))
+        conn.commit()
+        return jsonify({'success': True, 'message': f"{req['username']} approved as {req['role']}"}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        _close(conn, cursor)
+
+
+# ── Admin: reject a signup request ────────────────────────────────────────────
+@app.route('/admin/reject_request/<int:req_id>', methods=['DELETE'])
+def admin_reject_request(req_id):
+    _, err = require_admin()
+    if err: return err
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT username FROM signup_requests WHERE id = ?", (req_id,))
+        req = cursor.fetchone()
+        if not req:
+            return jsonify({'error': 'Request not found'}), 404
+        cursor.execute("DELETE FROM signup_requests WHERE id = ?", (req_id,))
+        conn.commit()
+        return jsonify({'success': True, 'message': f"{req['username']}'s request rejected"}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        _close(conn, cursor)
+
+
+# ── Admin: list all active users ──────────────────────────────────────────────
+@app.route('/admin/all_users', methods=['GET'])
+def admin_all_users():
+    _, err = require_admin()
+    if err: return err
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, role FROM admins ORDER BY role, username")
+        rows = cursor.fetchall()
+        return jsonify([dict(r) for r in rows]), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        _close(conn, cursor)
+
+
+# ── Admin: delete/deactivate a user ──────────────────────────────────────────
+@app.route('/admin/delete_user/<int:user_id>', methods=['DELETE'])
+def admin_delete_user(user_id):
+    admin_id, err = require_admin()
+    if err: return err
+    if admin_id == user_id:
+        return jsonify({'error': 'Cannot delete your own admin account'}), 400
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT username, role FROM admins WHERE id = ?", (user_id,))
+        u = cursor.fetchone()
+        if not u:
+            return jsonify({'error': 'User not found'}), 404
+        if u['role'] == 'admin':
+            return jsonify({'error': 'Cannot delete another admin account'}), 403
+        cursor.execute("DELETE FROM admins WHERE id = ?", (user_id,))
+        conn.commit()
+        return jsonify({'success': True, 'message': f"User '{u['username']}' deleted"}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
@@ -709,8 +869,8 @@ def publish_timetable():
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO published_timetables (teacher_id, timetable_data)
-            VALUES (%s, %s)
-            ON CONFLICT (teacher_id) DO UPDATE SET timetable_data = EXCLUDED.timetable_data, published_at = CURRENT_TIMESTAMP
+            VALUES (?, ?)
+            ON CONFLICT(teacher_id) DO UPDATE SET timetable_data = excluded.timetable_data, published_at = CURRENT_TIMESTAMP
         """, (user_id, timetable_json))
         conn.commit()
         return jsonify({'success': True, 'message': 'Timetable published successfully'}), 200
@@ -729,7 +889,7 @@ def get_published_timetables():
     if not conn:
         return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = dict_cursor(conn)
+        cursor = conn.cursor()
         cursor.execute("SELECT teacher_id, timetable_data, published_at FROM published_timetables")
         rows = cursor.fetchall()
         result = []
@@ -737,7 +897,7 @@ def get_published_timetables():
             result.append({
                 'teacher_id': r['teacher_id'],
                 'timetable_data': json.loads(r['timetable_data']),
-                'published_at': r['published_at'].strftime('%Y-%m-%d %H:%M:%S')
+                'published_at': str(r['published_at'])[:19]
             })
         return jsonify(result), 200
     except Exception as e:
@@ -756,7 +916,7 @@ def get_attendance_sessions():
     conn = get_db_connection()
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = dict_cursor(conn)
+        cursor = conn.cursor()
         cursor.execute("""
             SELECT a.id, a.date, a.total_students, a.created_at, a.is_published,
                    a.att_div_id, a.att_subject_id,
@@ -771,14 +931,14 @@ def get_attendance_sessions():
             LEFT JOIN classes          c  ON a.class_id       = c.id
             LEFT JOIN subjects         s  ON a.subject_id     = s.id
             LEFT JOIN attendance_records r ON r.session_id = a.id
-            WHERE a.user_id = %s
+            WHERE a.user_id = ?
             GROUP BY a.id
             ORDER BY a.date DESC, a.created_at DESC
         """, (user_id,))
         rows = cursor.fetchall()
         for r in rows:
-            r['date']       = r['date'].strftime('%Y-%m-%d')
-            r['created_at'] = r['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            r['date']       = str(r['date'])[:10]
+            r['created_at'] = str(r['created_at'])[:19]
         return jsonify(rows), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -804,13 +964,13 @@ def create_attendance_session():
         cursor.execute("""
             INSERT INTO attendance_sessions
                 (date, class_id, subject_id, att_div_id, att_subject_id, total_students, user_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (data['date'], class_id, subject_id, att_div_id, att_subject_id, len(data['students']), user_id))
-        sid = cursor.fetchone()[0]
+        sid = cursor.lastrowid
         for st in data['students']:
             cursor.execute("""
                 INSERT INTO attendance_records (session_id, student_name, student_roll, status)
-                VALUES (%s, %s, %s, %s)
+                VALUES (?, ?, ?, ?)
             """, (sid, st['name'], st.get('roll',''), st.get('status','absent')))
         conn.commit()
         return jsonify({'success': True, 'id': sid}), 201
@@ -826,7 +986,7 @@ def get_attendance_session(id):
     conn = get_db_connection()
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = dict_cursor(conn)
+        cursor = conn.cursor()
         cursor.execute("""
             SELECT a.id, a.date, a.total_students, a.att_div_id, a.att_subject_id,
                    COALESCE(d.name, c.class_name, 'N/A') AS class_name,
@@ -836,12 +996,12 @@ def get_attendance_session(id):
             LEFT JOIN att_div_subjects ds ON a.att_subject_id=ds.id
             LEFT JOIN classes c ON a.class_id=c.id
             LEFT JOIN subjects s ON a.subject_id=s.id
-            WHERE a.id=%s AND a.user_id=%s
+            WHERE a.id=? AND a.user_id=?
         """, (id, user_id))
         session = cursor.fetchone()
         if not session: return jsonify({'error': 'Not found'}), 404
-        session['date'] = session['date'].strftime('%Y-%m-%d')
-        cursor.execute("SELECT * FROM attendance_records WHERE session_id=%s ORDER BY id", (id,))
+        session['date'] = str(session['date'])[:10]
+        cursor.execute("SELECT * FROM attendance_records WHERE session_id=? ORDER BY id", (id,))
         session['records'] = cursor.fetchall()
         return jsonify(session), 200
     except Exception as e:
@@ -860,16 +1020,16 @@ def update_attendance_session(id):
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM attendance_sessions WHERE id=%s AND user_id=%s", (id, user_id))
+        cursor.execute("SELECT id FROM attendance_sessions WHERE id=? AND user_id=?", (id, user_id))
         if not cursor.fetchone(): return jsonify({'error': 'Not found'}), 404
         for st in data['students']:
             if 'id' in st:
-                cursor.execute("UPDATE attendance_records SET status=%s, student_name=%s WHERE id=%s AND session_id=%s",
+                cursor.execute("UPDATE attendance_records SET status=?, student_name=? WHERE id=? AND session_id=?",
                                (st['status'], st['name'], st['id'], id))
             else:
-                cursor.execute("INSERT INTO attendance_records (session_id,student_name,student_roll,status) VALUES(%s,%s,%s,%s)",
+                cursor.execute("INSERT INTO attendance_records (session_id,student_name,student_roll,status) VALUES(?,?,?,?)",
                                (id, st['name'], st.get('roll',''), st.get('status','absent')))
-        cursor.execute("UPDATE attendance_sessions SET total_students=%s WHERE id=%s", (len(data['students']), id))
+        cursor.execute("UPDATE attendance_sessions SET total_students=? WHERE id=?", (len(data['students']), id))
         conn.commit()
         return jsonify({'success': True}), 200
     except Exception as e:
@@ -885,7 +1045,7 @@ def delete_attendance_session(id):
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM attendance_sessions WHERE id=%s AND user_id=%s", (id, user_id))
+        cursor.execute("DELETE FROM attendance_sessions WHERE id=? AND user_id=?", (id, user_id))
         conn.commit()
         return jsonify({'success': True}), 200
     except Exception as e:
@@ -900,10 +1060,10 @@ def get_attendance_report():
     conn = get_db_connection()
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = dict_cursor(conn)
-        filters, params = ["a.user_id=%s"], [user_id]
-        if request.args.get('class_id'):   filters.append("a.class_id=%s");   params.append(request.args['class_id'])
-        if request.args.get('subject_id'): filters.append("a.subject_id=%s"); params.append(request.args['subject_id'])
+        cursor = conn.cursor()
+        filters, params = ["a.user_id=?"], [user_id]
+        if request.args.get('class_id'):   filters.append("a.class_id=?");   params.append(request.args['class_id'])
+        if request.args.get('subject_id'): filters.append("a.subject_id=?"); params.append(request.args['subject_id'])
         where = " AND ".join(filters)
         cursor.execute(f"""
             SELECT r.student_name, c.class_name, s.name AS subject_name,
@@ -931,7 +1091,7 @@ def get_public_attendance():
     conn = get_db_connection()
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = dict_cursor(conn)
+        cursor = conn.cursor()
         cursor.execute("""
             SELECT a.id, a.date, c.class_name, s.name AS subject_name, a.total_students,
                    adm.username AS teacher_name,
@@ -942,12 +1102,12 @@ def get_public_attendance():
             JOIN subjects s ON a.subject_id=s.id
             JOIN admins adm ON a.user_id=adm.id
             LEFT JOIN attendance_records r ON r.session_id=a.id
-            WHERE a.is_published=TRUE
+            WHERE a.is_published=1
             GROUP BY a.id
             ORDER BY a.date DESC LIMIT 100
         """)
         rows = cursor.fetchall()
-        for r in rows: r['date'] = r['date'].strftime('%Y-%m-%d')
+        for r in rows: r['date'] = str(r['date'])[:10]
         return jsonify(rows), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -964,8 +1124,8 @@ def get_att_divisions():
     conn = get_db_connection()
     if not conn: return jsonify({'error':'DB failed'}), 500
     try:
-        cursor = dict_cursor(conn)
-        cursor.execute("SELECT id, name FROM att_divisions WHERE user_id=%s ORDER BY name", (user_id,))
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM att_divisions WHERE user_id=? ORDER BY name", (user_id,))
         return jsonify(cursor.fetchall()), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
@@ -982,9 +1142,9 @@ def add_att_division():
     if not conn: return jsonify({'error':'DB failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO att_divisions (name, user_id) VALUES (%s,%s) RETURNING id", (data['name'].strip(), user_id))
+        cursor.execute("INSERT INTO att_divisions (name, user_id) VALUES (?,?)", (data['name'].strip(), user_id))
         conn.commit()
-        new_id = cursor.fetchone()[0]
+        new_id = cursor.lastrowid
         return jsonify({'success': True, 'id': new_id}), 201
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
@@ -998,7 +1158,7 @@ def delete_att_division(div_id):
     if not conn: return jsonify({'error':'DB failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM att_divisions WHERE id=%s AND user_id=%s", (div_id, user_id))
+        cursor.execute("DELETE FROM att_divisions WHERE id=? AND user_id=?", (div_id, user_id))
         conn.commit()
         return jsonify({'success': True}), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
@@ -1012,8 +1172,8 @@ def get_div_subjects(div_id):
     conn = get_db_connection()
     if not conn: return jsonify({'error':'DB failed'}), 500
     try:
-        cursor = dict_cursor(conn)
-        cursor.execute("SELECT id, name FROM att_div_subjects WHERE div_id=%s AND user_id=%s ORDER BY name", (div_id, user_id))
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM att_div_subjects WHERE div_id=? AND user_id=? ORDER BY name", (div_id, user_id))
         return jsonify(cursor.fetchall()), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
@@ -1030,10 +1190,10 @@ def add_div_subject(div_id):
     if not conn: return jsonify({'error':'DB failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO att_div_subjects (div_id, name, user_id) VALUES (%s,%s,%s) RETURNING id",
+        cursor.execute("INSERT INTO att_div_subjects (div_id, name, user_id) VALUES (?,?,?)",
                        (div_id, data['name'].strip(), user_id))
         conn.commit()
-        new_id = cursor.fetchone()[0]
+        new_id = cursor.lastrowid
         return jsonify({'success': True, 'id': new_id}), 201
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
@@ -1047,7 +1207,7 @@ def delete_div_subject(div_id, sub_id):
     if not conn: return jsonify({'error':'DB failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM att_div_subjects WHERE id=%s AND div_id=%s AND user_id=%s", (sub_id, div_id, user_id))
+        cursor.execute("DELETE FROM att_div_subjects WHERE id=? AND div_id=? AND user_id=?", (sub_id, div_id, user_id))
         conn.commit()
         return jsonify({'success': True}), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
@@ -1065,8 +1225,8 @@ def get_class_roster(class_id):
     conn = get_db_connection()
     if not conn: return jsonify({'error':'Database connection failed'}), 500
     try:
-        cursor = dict_cursor(conn)
-        cursor.execute("SELECT id, student_name, student_roll FROM class_students WHERE att_div_id=%s AND user_id=%s ORDER BY CASE WHEN student_roll ~ '^[0-9]+$' THEN student_roll::int ELSE 999999 END, id",
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, student_name, student_roll FROM class_students WHERE att_div_id=? AND user_id=? ORDER BY CASE WHEN student_roll ~ '^[0-9]+$' THEN student_roll::int ELSE 999999 END, id",
                        (class_id, user_id))
         return jsonify(cursor.fetchall()), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
@@ -1084,9 +1244,9 @@ def save_class_roster(class_id):
     if not conn: return jsonify({'error':'Database connection failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM class_students WHERE att_div_id=%s AND user_id=%s", (class_id, user_id))
+        cursor.execute("DELETE FROM class_students WHERE att_div_id=? AND user_id=?", (class_id, user_id))
         for st in data['students']:
-            cursor.execute("INSERT INTO class_students (att_div_id,student_name,student_roll,user_id) VALUES(%s,%s,%s,%s)",
+            cursor.execute("INSERT INTO class_students (att_div_id,student_name,student_roll,user_id) VALUES(?,?,?,?)",
                            (class_id, st['name'], st.get('roll',''), user_id))
         conn.commit()
         return jsonify({'success': True, 'count': len(data['students'])}), 200
@@ -1102,7 +1262,7 @@ def delete_roster_student(class_id, sid):
     if not conn: return jsonify({'error':'Database connection failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM class_students WHERE id=%s AND att_div_id=%s AND user_id=%s", (sid, class_id, user_id))
+        cursor.execute("DELETE FROM class_students WHERE id=? AND att_div_id=? AND user_id=?", (sid, class_id, user_id))
         conn.commit()
         return jsonify({'success': True}), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
@@ -1119,7 +1279,7 @@ def student_attendance_report():
     conn = get_db_connection()
     if not conn: return jsonify({'error':'Database connection failed'}), 500
     try:
-        cursor = dict_cursor(conn)
+        cursor = conn.cursor()
         cursor.execute("""
             SELECT s.name AS subject_name, c.class_name,
                    COUNT(*) AS total,
@@ -1132,12 +1292,12 @@ def student_attendance_report():
             JOIN attendance_sessions a ON r.session_id=a.id
             JOIN subjects s ON a.subject_id=s.id
             JOIN classes  c ON a.class_id=c.id
-            WHERE r.student_name=%s AND a.is_published=TRUE
+            WHERE r.student_name=? AND a.is_published=1
             GROUP BY a.subject_id, a.class_id ORDER BY c.class_name, s.name
         """, (name,))
         rows = cursor.fetchall()
         for row in rows:
-            if row['last_date']: row['last_date'] = row['last_date'].strftime('%Y-%m-%d')
+            if row['last_date']: row['last_date'] = str(row['last_date'])[:10]
         return jsonify({'name': name, 'report': rows}), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
@@ -1152,7 +1312,7 @@ def get_public_session_detail(id):
     conn = get_db_connection()
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = dict_cursor(conn)
+        cursor = conn.cursor()
         cursor.execute("""
             SELECT a.id, a.date, a.total_students, a.class_id, a.subject_id,
                    c.class_name, s.name AS subject_name, adm.username AS teacher_name
@@ -1160,12 +1320,12 @@ def get_public_session_detail(id):
             JOIN classes c ON a.class_id=c.id
             JOIN subjects s ON a.subject_id=s.id
             JOIN admins adm ON a.user_id=adm.id
-            WHERE a.id=%s AND a.is_published=TRUE
+            WHERE a.id=? AND a.is_published=1
         """, (id,))
         session = cursor.fetchone()
         if not session: return jsonify({'error': 'Not found or not published'}), 404
-        session['date'] = session['date'].strftime('%Y-%m-%d')
-        cursor.execute("SELECT * FROM attendance_records WHERE session_id=%s ORDER BY CASE WHEN student_roll ~ '^[0-9]+$' THEN student_roll::int ELSE 999999 END, id", (id,))
+        session['date'] = str(session['date'])[:10]
+        cursor.execute("SELECT * FROM attendance_records WHERE session_id=? ORDER BY CASE WHEN student_roll ~ '^[0-9]+$' THEN student_roll::int ELSE 999999 END, id", (id,))
         session['records'] = cursor.fetchall()
         return jsonify(session), 200
     except Exception as e:
@@ -1182,12 +1342,12 @@ def toggle_publish_session(id):
     conn = get_db_connection()
     if not conn: return jsonify({'error': 'Database connection failed'}), 500
     try:
-        cursor = dict_cursor(conn)
-        cursor.execute("SELECT id, is_published FROM attendance_sessions WHERE id=%s AND user_id=%s", (id, user_id))
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, is_published FROM attendance_sessions WHERE id=? AND user_id=?", (id, user_id))
         row = cursor.fetchone()
         if not row: return jsonify({'error': 'Not found or unauthorized'}), 404
         new_state = 0 if row['is_published'] else 1
-        cursor.execute("UPDATE attendance_sessions SET is_published=%s WHERE id=%s", (new_state, id))
+        cursor.execute("UPDATE attendance_sessions SET is_published=? WHERE id=?", (new_state, id))
         conn.commit()
         return jsonify({'success': True, 'is_published': bool(new_state)}), 200
     except Exception as e:
@@ -1198,5 +1358,4 @@ def toggle_publish_session(id):
 
 if __name__ == '__main__':
     # Run the server on port 5001, accessible locally.
-    port = int(os.environ.get('PORT', 5001))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(debug=True, host='127.0.0.1', port=5001)
