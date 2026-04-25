@@ -1652,6 +1652,12 @@ document.getElementById('export-pdf').addEventListener('click', () => {
     const wrapper = document.getElementById('timetable-wrapper');
     const originalBackground = wrapper.style.background;
     const originalOverflow = wrapper.style.overflow;
+    
+    // Fix: html2canvas completely fails and renders blank on backdrop-filter (glassmorphism)
+    wrapper.classList.remove('glass-card');
+    wrapper.style.backdropFilter = 'none';
+    wrapper.style.webkitBackdropFilter = 'none';
+    
     wrapper.style.background = '#0a0a10'; // Ensure dark background for visibility
     wrapper.style.overflow = 'visible';   // Prevent html2canvas from clipping the table!
     
@@ -1676,6 +1682,9 @@ document.getElementById('export-pdf').addEventListener('click', () => {
         wrapper.removeChild(title);
         wrapper.style.background = originalBackground;
         wrapper.style.overflow = originalOverflow;
+        wrapper.style.backdropFilter = '';
+        wrapper.style.webkitBackdropFilter = '';
+        wrapper.classList.add('glass-card');
     });
 });
 
