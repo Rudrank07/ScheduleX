@@ -1643,17 +1643,37 @@ document.getElementById('export-pdf').addEventListener('click', () => {
         showToast("No timetable available to download!", 'warning');
         return;
     }
-    const element = document.getElementById('timetable');
+    
+    // Get class name
+    const sel = document.getElementById('view-class-select');
+    const className = sel.options[sel.selectedIndex]?.text || 'Class';
+    
+    // Create wrapper with dark theme background and a title
+    const wrapper = document.createElement('div');
+    wrapper.style.padding = '30px';
+    wrapper.style.background = '#0a0a10';
+    wrapper.style.color = '#dcdce8';
+    wrapper.style.fontFamily = 'Inter, sans-serif';
+    
+    const title = document.createElement('h2');
+    title.textContent = `Timetable: ${className}`;
+    title.style.marginBottom = '20px';
+    title.style.color = '#7C6EF5'; // primary color
+    title.style.textAlign = 'center';
+    wrapper.appendChild(title);
+    
+    const tableClone = document.getElementById('timetable').cloneNode(true);
+    wrapper.appendChild(tableClone);
     
     const opt = {
         margin:       0.5,
-        filename:     'timetable.pdf',
+        filename:     `Timetable_${className.replace(/\s+/g, '_')}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
+        html2canvas:  { scale: 2, backgroundColor: '#0a0a10' },
         jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
     };
     
-    html2pdf().set(opt).from(element).save();
+    html2pdf().set(opt).from(wrapper).save();
 });
 
 document.getElementById('export-excel').addEventListener('click', () => {
@@ -1663,9 +1683,14 @@ document.getElementById('export-excel').addEventListener('click', () => {
         showToast("No timetable available to download!", 'warning');
         return;
     }
+    
+    const sel = document.getElementById('view-class-select');
+    const className = sel.options[sel.selectedIndex]?.text || 'Class';
+    
     const table = document.getElementById('timetable');
-    const wb = XLSX.utils.table_to_book(table, {sheet: "Timetable"});
-    XLSX.writeFile(wb, 'timetable.xlsx');
+    // Add title row to excel
+    const wb = XLSX.utils.table_to_book(table, {sheet: className.substring(0, 31)});
+    XLSX.writeFile(wb, `Timetable_${className.replace(/\s+/g, '_')}.xlsx`);
 });
 
 // History Controls
