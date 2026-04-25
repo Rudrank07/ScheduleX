@@ -146,6 +146,10 @@
                 <li data-target="attendance-page" id="attendance-nav-item">
                     <i class="fa-solid fa-clipboard-user"></i><span>Attendance</span>
                 </li>
+                <li data-target="requests-page" id="requests-nav-item" style="display:none; position:relative;">
+                    <i class="fa-solid fa-user-clock"></i><span>Requests</span>
+                    <span id="requests-nav-dot" style="display:none;position:absolute;right:14px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:#fdcb6e;box-shadow:0 0 8px rgba(253,203,110,0.8);"></span>
+                </li>
                 <li data-target="admin-page" id="admin-nav-item" style="display:none;">
                     <i class="fa-solid fa-shield-halved"></i><span>Admin</span>
                 </li>
@@ -552,39 +556,6 @@
                 <!-- Attendance Page -->
                 <section id="attendance-page" class="page hidden">
 
-                    <!-- TEACHER VIEW -->
-                    <div id="att-teacher-view">
-                        <div class="tabs" id="att-main-tabs">
-                            <button class="tab-btn active" data-atab="att-take-tab">&#128203; Take Attendance</button>
-                            <button class="tab-btn" data-atab="att-records-tab">&#128196; Records</button>
-                            <button class="tab-btn" data-atab="att-report-tab">&#128202; Report</button>
-                            <button class="tab-btn" data-atab="att-manage-tab">&#9881; Setup</button>
-                            <button class="tab-btn" data-atab="att-requests-tab" id="att-requests-tab-btn" style="position:relative;">
-                                <i class="fa-solid fa-user-clock"></i> Student Requests
-                                <span id="att-requests-dot" style="display:none;position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#fdcb6e;box-shadow:0 0 6px rgba(253,203,110,0.8);"></span>
-                            </button>
-                        </div>
-
-                        <!-- Student Signup Requests Panel (Teacher-visible, student-only approvals) -->
-                        <div id="att-requests-tab" class="att-tab-panel" style="display:none;">
-                            <div class="glass-card" style="padding:28px;">
-                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-                                    <div>
-                                        <h3 style="margin:0;display:flex;align-items:center;gap:10px;">
-                                            <i class="fa-solid fa-user-clock" style="color:#fdcb6e;"></i> Pending Student Signups
-                                        </h3>
-                                        <p style="margin:6px 0 0;color:rgba(220,220,235,0.4);font-size:0.85rem;">Approve students who have requested access to ScheduleX</p>
-                                    </div>
-                                    <button class="btn-secondary" id="teacher-req-refresh-btn" style="padding:8px 16px;display:flex;align-items:center;gap:8px;">
-                                        <i class="fa-solid fa-rotate"></i> Refresh
-                                    </button>
-                                </div>
-                                <div id="teacher-requests-list">
-                                    <div class="admin-empty-state"><i class="fa-solid fa-inbox"></i><p>No pending student requests</p></div>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- TAKE ATTENDANCE (Simplified) -->
                         <div id="att-take-tab" class="att-tab-panel">
 
@@ -790,6 +761,47 @@
             <div id="att-view-list" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
         </div>
     </div>
+
+    <!-- ══════════════════════════════════════════════
+         REQUESTS PAGE (teacher + admin only)
+         ══════════════════════════════════════════════ -->
+    <section id="requests-page" class="page hidden" style="padding: 0 0 40px 0;">
+        <div style="display: grid; gap: 24px;">
+
+            <!-- ── Hero header card ── -->
+            <div class="requests-hero-card">
+                <div class="requests-hero-bg"></div>
+                <div class="requests-hero-content">
+                    <div class="requests-hero-icon">
+                        <i class="fa-solid fa-user-clock"></i>
+                    </div>
+                    <div>
+                        <h2 class="requests-hero-title">Student Signup Requests</h2>
+                        <p class="requests-hero-sub">Review and approve students waiting to join ScheduleX</p>
+                    </div>
+                    <div style="margin-left:auto; display:flex; align-items:center; gap:12px; flex-shrink:0;">
+                        <div id="requests-count-badge" class="requests-count-badge" style="display:none;">
+                            <span id="requests-count-num">0</span> Pending
+                        </div>
+                        <button class="btn-secondary" id="teacher-req-refresh-btn" style="padding:10px 20px; display:flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-rotate"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Request cards list ── -->
+            <div class="glass-card" style="padding: 28px;">
+                <div id="teacher-requests-list">
+                    <div class="admin-empty-state">
+                        <i class="fa-solid fa-inbox"></i>
+                        <p>No pending student requests</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
 
     <!-- ══════════════════════════════════════════════
          ADMIN PAGE  (only visible to admin role)

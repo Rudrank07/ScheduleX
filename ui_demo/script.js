@@ -415,57 +415,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function applyRoleRestrictions() {
     const role = localStorage.getItem('loggedInRole');
-    const addDataTab    = document.querySelector('[data-target="add-data-page"]');
-    const genTab        = document.querySelector('[data-target="generate-page"]');
-    const historyTab    = document.querySelector('[data-target="history-page"]');
-    const dashboardTab  = document.querySelector('[data-target="dashboard-page"]');
-    const adminNavItem  = document.getElementById('admin-nav-item');
+    const addDataTab     = document.querySelector('[data-target="add-data-page"]');
+    const genTab         = document.querySelector('[data-target="generate-page"]');
+    const historyTab     = document.querySelector('[data-target="history-page"]');
+    const dashboardTab   = document.querySelector('[data-target="dashboard-page"]');
+    const adminNavItem   = document.getElementById('admin-nav-item');
+    const requestsNavItem = document.getElementById('requests-nav-item');
 
     if (role === 'admin') {
-        // Admin sees everything: all teacher tabs + admin tab
-        if (addDataTab)   addDataTab.style.display = '';
-        if (genTab)       genTab.style.display = '';
-        if (historyTab)   historyTab.style.display = '';
-        if (dashboardTab) dashboardTab.style.display = '';
-        if (adminNavItem) adminNavItem.style.display = '';
+        // Admin sees everything
+        if (addDataTab)      addDataTab.style.display = '';
+        if (genTab)          genTab.style.display = '';
+        if (historyTab)      historyTab.style.display = '';
+        if (dashboardTab)    dashboardTab.style.display = '';
+        if (adminNavItem)    adminNavItem.style.display = '';
+        if (requestsNavItem) requestsNavItem.style.display = '';
 
-        const resetBtn = document.getElementById('reset-btn');
-        if (resetBtn) resetBtn.style.display = '';
-        const saveHistBtn = document.getElementById('save-history-btn');
-        if (saveHistBtn) saveHistBtn.style.display = '';
-        const publishBtn = document.getElementById('publish-timetable-btn');
-        if (publishBtn) publishBtn.style.display = '';
-        const editBtn = document.getElementById('edit-timetable-btn');
-        if (editBtn) editBtn.style.display = '';
+        const resetBtn    = document.getElementById('reset-btn');           if (resetBtn)    resetBtn.style.display = '';
+        const saveHistBtn = document.getElementById('save-history-btn');    if (saveHistBtn) saveHistBtn.style.display = '';
+        const publishBtn  = document.getElementById('publish-timetable-btn'); if (publishBtn)  publishBtn.style.display = '';
+        const editBtn     = document.getElementById('edit-timetable-btn');  if (editBtn)     editBtn.style.display = '';
 
     } else if (role === 'student') {
-        if (addDataTab)   addDataTab.style.display = 'none';
-        if (genTab)       genTab.style.display = 'none';
-        if (historyTab)   historyTab.style.display = 'none';
-        if (dashboardTab) dashboardTab.style.display = 'none';
-        if (adminNavItem) adminNavItem.style.display = 'none';
-        
-        const resetBtn = document.getElementById('reset-btn');
-        if (resetBtn) resetBtn.style.display = 'none';
-        const saveHistBtn = document.getElementById('save-history-btn');
-        if (saveHistBtn) saveHistBtn.style.display = 'none';
-        const publishBtn = document.getElementById('publish-timetable-btn');
-        if (publishBtn) publishBtn.style.display = 'none';
-        const editBtn = document.getElementById('edit-timetable-btn');
-        if (editBtn) editBtn.style.display = 'none';
+        if (addDataTab)      addDataTab.style.display = 'none';
+        if (genTab)          genTab.style.display = 'none';
+        if (historyTab)      historyTab.style.display = 'none';
+        if (dashboardTab)    dashboardTab.style.display = 'none';
+        if (adminNavItem)    adminNavItem.style.display = 'none';
+        if (requestsNavItem) requestsNavItem.style.display = 'none';
+
+        const resetBtn    = document.getElementById('reset-btn');             if (resetBtn)    resetBtn.style.display = 'none';
+        const saveHistBtn = document.getElementById('save-history-btn');      if (saveHistBtn) saveHistBtn.style.display = 'none';
+        const publishBtn  = document.getElementById('publish-timetable-btn'); if (publishBtn)  publishBtn.style.display = 'none';
+        const editBtn     = document.getElementById('edit-timetable-btn');    if (editBtn)     editBtn.style.display = 'none';
 
         const navLinksArr = document.querySelectorAll('.nav-links li');
         navLinksArr.forEach(l => l.classList.remove('active'));
         document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
 
-        const vtTab = document.querySelector('[data-target="view-timetable-page"]');
+        const vtTab  = document.querySelector('[data-target="view-timetable-page"]');
         if (vtTab) vtTab.classList.add('active');
         const vtPage = document.getElementById('view-timetable-page');
         if (vtPage) vtPage.classList.remove('hidden');
 
     } else {
-        // Teacher: all tabs visible except admin
-        if (adminNavItem) adminNavItem.style.display = 'none';
+        // Teacher: hide admin tab, show requests tab
+        if (adminNavItem)    adminNavItem.style.display = 'none';
+        if (requestsNavItem) requestsNavItem.style.display = '';
     }
 }
 
@@ -2881,14 +2877,23 @@ document.getElementById('admin-refresh-btn').addEventListener('click', async () 
 async function loadTeacherStudentRequests() {
     const container = document.getElementById('teacher-requests-list');
     if (!container) return;
-    container.innerHTML = '<div style="color:rgba(220,220,235,0.3);text-align:center;padding:24px;">Loading...</div>';
+    container.innerHTML = '<div style="color:rgba(220,220,235,0.3);text-align:center;padding:24px;"><i class="fa-solid fa-rotate fa-spin" style="margin-right:8px;"></i>Loading...</div>';
     try {
         const res  = await apiFetch(`${API_BASE}/teacher/student_requests`);
         const data = await res.json();
         renderTeacherRequests(data);
-        // Update the tab dot indicator
-        const dot = document.getElementById('att-requests-dot');
-        if (dot) dot.style.display = data.length > 0 ? 'block' : 'none';
+
+        // ── Update count badge in hero card ──────────────────────
+        const countBadge = document.getElementById('requests-count-badge');
+        const countNum   = document.getElementById('requests-count-num');
+        if (countBadge && countNum) {
+            countNum.textContent = data.length;
+            countBadge.style.display = data.length > 0 ? 'inline-flex' : 'none';
+        }
+        // ── Update nav sidebar dot ────────────────────────────────
+        const navDot = document.getElementById('requests-nav-dot');
+        if (navDot) navDot.style.display = data.length > 0 ? 'block' : 'none';
+
     } catch(e) {
         container.innerHTML = `<div class="admin-empty-state"><i class="fa-solid fa-circle-exclamation"></i><p>Failed to load: ${e}</p></div>`;
     }
@@ -2937,7 +2942,7 @@ window.teacherApproveStudent = async function(id, username) {
         const res  = await apiFetch(`${API_BASE}/teacher/approve_student/${id}`, { method: 'POST' });
         const data = await res.json();
         if (data.success) {
-            showToast(`${username} approved as student!`, 'success');
+            showToast(`${username} approved as student! 🎓`, 'success');
             await loadTeacherStudentRequests();
         } else {
             showToast(data.error || 'Approval failed', 'error');
@@ -2949,32 +2954,24 @@ window.teacherApproveStudent = async function(id, username) {
     }
 };
 
-// Teacher Refresh button
+// ── Refresh button with spin animation ───────────────────────────────────────
 const teacherReqRefreshBtn = document.getElementById('teacher-req-refresh-btn');
 if (teacherReqRefreshBtn) {
     teacherReqRefreshBtn.addEventListener('click', async () => {
-        setButtonLoading(teacherReqRefreshBtn, true);
+        teacherReqRefreshBtn.classList.add('spinning');
+        setTimeout(() => teacherReqRefreshBtn.classList.remove('spinning'), 650);
         await loadTeacherStudentRequests();
-        setButtonLoading(teacherReqRefreshBtn, false);
         showToast('Requests refreshed', 'info');
     });
 }
 
-// Load student requests when the "Student Requests" tab is clicked
-document.querySelectorAll('[data-atab="att-requests-tab"]').forEach(btn => {
-    btn.addEventListener('click', () => loadTeacherStudentRequests());
-});
-
-// Also auto-load when the Attendance nav item is clicked (if teacher/admin role)
+// ── Requests nav item click → load page ──────────────────────────────────────
 (function() {
-    const attNavItem = document.getElementById('attendance-nav-item');
-    if (attNavItem) {
-        attNavItem.addEventListener('click', () => {
-            const role = localStorage.getItem('loggedInRole');
-            if (role === 'teacher' || role === 'admin') {
-                // Delay slightly so the page is visible first
-                setTimeout(loadTeacherStudentRequests, 300);
-            }
+    const reqNavItem = document.getElementById('requests-nav-item');
+    if (reqNavItem) {
+        reqNavItem.addEventListener('click', () => {
+            setTimeout(loadTeacherStudentRequests, 120);
         });
     }
 })();
+
