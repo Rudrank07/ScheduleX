@@ -2264,8 +2264,11 @@ function attRenderMarkGrid(gridId, students, isEdit) {
         card.querySelectorAll('.att-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 students[i].status = btn.dataset.status;
+                
+                // ONLY update the clicked card's DOM instead of re-rendering everything
                 card.className = `att-card att-${btn.dataset.status}`;
                 card.querySelectorAll('.att-btn').forEach(b => b.classList.toggle('active', b === btn));
+                
                 if (!isEdit) attUpdateCounters();
                 else attUpdateEditCounters(students, gridId);
             });
