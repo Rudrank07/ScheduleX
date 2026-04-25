@@ -555,7 +555,9 @@
 
                 <!-- Attendance Page -->
                 <section id="attendance-page" class="page hidden">
-                    <div class="tabs" id="att-main-tabs" style="margin-bottom: 20px;">
+                    <!-- TEACHER VIEW -->
+                    <div id="att-teacher-view">
+                        <div class="tabs" id="att-main-tabs" style="margin-bottom: 20px;">
                         <button class="tab-btn active" data-atab="att-take-tab"><i class="fa-solid fa-clipboard-check"></i> Take Attendance</button>
                         <button class="tab-btn" data-atab="att-records-tab"><i class="fa-solid fa-folder-open"></i> Records</button>
                         <button class="tab-btn" data-atab="att-report-tab"><i class="fa-solid fa-chart-pie"></i> Report</button>
@@ -682,7 +684,8 @@
                                 <div id="att-div-list"></div>
                             </div>
                         </div>
-                    </div>
+                    </div> <!-- End att-teacher-view -->
+
 
                     <!-- STUDENT VIEW -->
                     <div id="att-student-view" class="hidden">
