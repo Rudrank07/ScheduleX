@@ -1648,27 +1648,20 @@ document.getElementById('export-pdf').addEventListener('click', () => {
     const sel = document.getElementById('view-class-select');
     const className = sel.options[sel.selectedIndex]?.text || 'Class';
     
-    // Create wrapper with dark theme background and a title
-    const wrapper = document.createElement('div');
-    wrapper.style.padding = '30px';
-    wrapper.style.background = '#0a0a10';
-    wrapper.style.color = '#dcdce8';
-    wrapper.style.fontFamily = 'Inter, sans-serif';
-    // Must be in DOM for html2canvas to render correctly, but we hide it off-screen
-    wrapper.style.position = 'absolute';
-    wrapper.style.left = '-9999px';
-    wrapper.style.top = '-9999px';
+    // Use the actual DOM element so html2canvas computes layout correctly
+    const wrapper = document.getElementById('timetable-wrapper');
+    const originalBackground = wrapper.style.background;
+    const originalOverflow = wrapper.style.overflow;
+    wrapper.style.background = '#0a0a10'; // Ensure dark background for visibility
+    wrapper.style.overflow = 'visible';   // Prevent html2canvas from clipping the table!
     
+    // Temporarily add title
     const title = document.createElement('h2');
     title.textContent = `Timetable: ${className}`;
     title.style.marginBottom = '20px';
-    title.style.color = '#7C6EF5'; // primary color
+    title.style.color = '#7C6EF5'; 
     title.style.textAlign = 'center';
-    wrapper.appendChild(title);
-    
-    const tableClone = document.getElementById('timetable').cloneNode(true);
-    wrapper.appendChild(tableClone);
-    document.body.appendChild(wrapper);
+    wrapper.insertBefore(title, wrapper.firstChild);
     
     const opt = {
         margin:       0.5,
@@ -1679,7 +1672,10 @@ document.getElementById('export-pdf').addEventListener('click', () => {
     };
     
     html2pdf().set(opt).from(wrapper).save().then(() => {
-        document.body.removeChild(wrapper);
+        // Cleanup DOM modifications
+        wrapper.removeChild(title);
+        wrapper.style.background = originalBackground;
+        wrapper.style.overflow = originalOverflow;
     });
 });
 
