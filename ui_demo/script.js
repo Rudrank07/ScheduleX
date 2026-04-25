@@ -1653,6 +1653,17 @@ document.getElementById('export-pdf').addEventListener('click', () => {
     const originalBackground = wrapper.style.background;
     const originalOverflow = wrapper.style.overflow;
     
+    // --- FIX FOR BLANK PDF ---
+    // html2canvas commonly renders blank if the container is scrolled out of view.
+    // We must reset the scroll positions temporarily.
+    const mainContent = document.querySelector('.main-content');
+    const originalScrollTop = mainContent ? mainContent.scrollTop : 0;
+    const originalWindowScroll = window.scrollY;
+    
+    if (mainContent) mainContent.scrollTop = 0;
+    window.scrollTo(0, 0);
+    // -------------------------
+
     // Fix: html2canvas completely fails and renders blank on backdrop-filter (glassmorphism)
     wrapper.classList.remove('glass-card');
     wrapper.style.backdropFilter = 'none';
@@ -1660,6 +1671,17 @@ document.getElementById('export-pdf').addEventListener('click', () => {
     
     wrapper.style.background = '#0a0a10'; // Ensure dark background for visibility
     wrapper.style.overflow = 'visible';   // Prevent html2canvas from clipping the table!
+    
+    // Force explicit styles because html2canvas ignores CSS variables on some browsers, making text invisible
+    const tempStyle = document.createElement('style');
+    tempStyle.innerHTML = `
+        #timetable-wrapper { background-color: #0a0a10 !important; color: #ffffff !important; padding: 20px !important; }
+        #timetable-wrapper table { color: #ffffff !important; width: 100% !important; border-collapse: collapse !important; }
+        #timetable-wrapper th, #timetable-wrapper td { border: 1px solid rgba(255,255,255,0.3) !important; color: #ffffff !important; padding: 12px !important; }
+        #timetable-wrapper th { background-color: rgba(124, 110, 245, 0.4) !important; }
+        .batch-legend { display: flex !important; margin-top: 15px !important; }
+    `;
+    wrapper.appendChild(tempStyle);
     
     // Temporarily add title
     const title = document.createElement('h2');
@@ -1673,18 +1695,29 @@ document.getElementById('export-pdf').addEventListener('click', () => {
         margin:       0.5,
         filename:     `Timetable_${className.replace(/\s+/g, '_')}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, backgroundColor: '#0a0a10' },
+        html2canvas:  { 
+            scale: 2, 
+            backgroundColor: '#0a0a10', 
+            useCORS: true,
+            scrollY: 0,
+            scrollX: 0
+        },
         jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
     };
     
     html2pdf().set(opt).from(wrapper).save().then(() => {
         // Cleanup DOM modifications
         wrapper.removeChild(title);
+        wrapper.removeChild(tempStyle);
         wrapper.style.background = originalBackground;
         wrapper.style.overflow = originalOverflow;
         wrapper.style.backdropFilter = '';
         wrapper.style.webkitBackdropFilter = '';
         wrapper.classList.add('glass-card');
+        
+        // Restore scroll positions
+        if (mainContent) mainContent.scrollTop = originalScrollTop;
+        window.scrollTo(0, originalWindowScroll);
     });
 });
 
