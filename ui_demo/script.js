@@ -2065,7 +2065,7 @@ window.saveRosterFromSetup = async function(divId) {
             showToast(`✅ ${students.length} students saved for this division!`, 'success');
             loadRosterSection(divId);
         } else {
-            showToast('Error saving: ' + (d.error || 'Unknown error', 'error'));
+            showToast('Error saving: ' + (d.error || 'Unknown error'), 'error');
         }
     } catch(e) { showToast('Error: ' + e, 'error'); }
 };
@@ -2872,3 +2872,109 @@ document.getElementById('admin-refresh-btn').addEventListener('click', async () 
     showToast('Admin panel refreshed', 'info');
 });
 
+
+/* ══════════════════════════════════════════════════════════════
+   TEACHER: Student Signup Request Approval
+   Teachers can approve student requests only (not teacher requests)
+   ══════════════════════════════════════════════════════════════ */
+
+async function loadTeacherStudentRequests() {
+    const container = document.getElementById('teacher-requests-list');
+    if (!container) return;
+    container.innerHTML = '<div style="color:rgba(220,220,235,0.3);text-align:center;padding:24px;">Loading...</div>';
+    try {
+        const res  = await apiFetch(`${API_BASE}/teacher/student_requests`);
+        const data = await res.json();
+        renderTeacherRequests(data);
+        // Update the tab dot indicator
+        const dot = document.getElementById('att-requests-dot');
+        if (dot) dot.style.display = data.length > 0 ? 'block' : 'none';
+    } catch(e) {
+        container.innerHTML = `<div class="admin-empty-state"><i class="fa-solid fa-circle-exclamation"></i><p>Failed to load: ${e}</p></div>`;
+    }
+}
+
+function renderTeacherRequests(requests) {
+    const container = document.getElementById('teacher-requests-list');
+    if (!container) return;
+
+    if (!requests || requests.length === 0) {
+        container.innerHTML = `
+            <div class="admin-empty-state">
+                <i class="fa-solid fa-inbox"></i>
+                <p>No pending student signup requests</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = requests.map(req => {
+        const date = req.requested_at ? new Date(req.requested_at).toLocaleString() : '';
+        return `
+            <div class="admin-req-card" id="treq-card-${req.id}">
+                <div class="admin-req-avatar role-student">
+                    <i class="fa-solid fa-user-graduate"></i>
+                </div>
+                <div class="admin-req-info">
+                    <div class="admin-req-username">${req.username}</div>
+                    <div class="admin-req-meta">
+                        Student account request
+                        ${date ? `&nbsp;·&nbsp;${date}` : ''}
+                    </div>
+                </div>
+                <div class="admin-req-actions">
+                    <button class="admin-approve-btn" onclick="teacherApproveStudent(${req.id}, '${req.username}')">
+                        <i class="fa-solid fa-check"></i> Approve
+                    </button>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+window.teacherApproveStudent = async function(id, username) {
+    const card = document.getElementById(`treq-card-${id}`);
+    if (card) card.classList.add('req-approving');
+    try {
+        const res  = await apiFetch(`${API_BASE}/teacher/approve_student/${id}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`${username} approved as student!`, 'success');
+            await loadTeacherStudentRequests();
+        } else {
+            showToast(data.error || 'Approval failed', 'error');
+            if (card) card.classList.remove('req-approving');
+        }
+    } catch(e) {
+        showToast('API Error: ' + e, 'error');
+        if (card) card.classList.remove('req-approving');
+    }
+};
+
+// Teacher Refresh button
+const teacherReqRefreshBtn = document.getElementById('teacher-req-refresh-btn');
+if (teacherReqRefreshBtn) {
+    teacherReqRefreshBtn.addEventListener('click', async () => {
+        setButtonLoading(teacherReqRefreshBtn, true);
+        await loadTeacherStudentRequests();
+        setButtonLoading(teacherReqRefreshBtn, false);
+        showToast('Requests refreshed', 'info');
+    });
+}
+
+// Load student requests when the "Student Requests" tab is clicked
+document.querySelectorAll('[data-atab="att-requests-tab"]').forEach(btn => {
+    btn.addEventListener('click', () => loadTeacherStudentRequests());
+});
+
+// Also auto-load when the Attendance nav item is clicked (if teacher/admin role)
+(function() {
+    const attNavItem = document.getElementById('attendance-nav-item');
+    if (attNavItem) {
+        attNavItem.addEventListener('click', () => {
+            const role = localStorage.getItem('loggedInRole');
+            if (role === 'teacher' || role === 'admin') {
+                // Delay slightly so the page is visible first
+                setTimeout(loadTeacherStudentRequests, 300);
+            }
+        });
+    }
+})();

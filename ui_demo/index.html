@@ -559,6 +559,30 @@
                             <button class="tab-btn" data-atab="att-records-tab">&#128196; Records</button>
                             <button class="tab-btn" data-atab="att-report-tab">&#128202; Report</button>
                             <button class="tab-btn" data-atab="att-manage-tab">&#9881; Setup</button>
+                            <button class="tab-btn" data-atab="att-requests-tab" id="att-requests-tab-btn" style="position:relative;">
+                                <i class="fa-solid fa-user-clock"></i> Student Requests
+                                <span id="att-requests-dot" style="display:none;position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#fdcb6e;box-shadow:0 0 6px rgba(253,203,110,0.8);"></span>
+                            </button>
+                        </div>
+
+                        <!-- Student Signup Requests Panel (Teacher-visible, student-only approvals) -->
+                        <div id="att-requests-tab" class="att-tab-panel" style="display:none;">
+                            <div class="glass-card" style="padding:28px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+                                    <div>
+                                        <h3 style="margin:0;display:flex;align-items:center;gap:10px;">
+                                            <i class="fa-solid fa-user-clock" style="color:#fdcb6e;"></i> Pending Student Signups
+                                        </h3>
+                                        <p style="margin:6px 0 0;color:rgba(220,220,235,0.4);font-size:0.85rem;">Approve students who have requested access to ScheduleX</p>
+                                    </div>
+                                    <button class="btn-secondary" id="teacher-req-refresh-btn" style="padding:8px 16px;display:flex;align-items:center;gap:8px;">
+                                        <i class="fa-solid fa-rotate"></i> Refresh
+                                    </button>
+                                </div>
+                                <div id="teacher-requests-list">
+                                    <div class="admin-empty-state"><i class="fa-solid fa-inbox"></i><p>No pending student requests</p></div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- TAKE ATTENDANCE (Simplified) -->
