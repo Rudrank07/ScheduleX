@@ -1934,21 +1934,47 @@ async function attPopulateDropdowns() {
     // Subject dropdowns will be populated when a division is selected
 }
 
-// ── When division is selected in Take Attendance, load its subjects ───
-document.getElementById('att-class-sel').addEventListener('change', async function() {
-    const divId = this.value;
-    if (!divId) return;
-    try {
-        const res = await apiFetch(`/attendance/division/${divId}/subjects`);
-        attDivSubjects = await res.json();
-        const sel = document.getElementById('att-subj-sel');
-        sel.innerHTML = '<option value="" disabled selected>Select subject...</option>';
-        attDivSubjects.forEach(s => {
-            const o = document.createElement('option');
-            o.value = s.id; o.textContent = s.name;
-            sel.appendChild(o);
-        });
-    } catch(e) { console.error(e); }
+// ── Dynamically load subjects when a division is selected ───────────────
+const attClassSubjMap = {
+    'att-class-sel': 'att-subj-sel', // Take Attendance Tab
+    'att-flt-class': 'att-flt-subj', // Records Tab
+    'att-rpt-class': 'att-rpt-subj'  // Report Tab
+};
+
+Object.entries(attClassSubjMap).forEach(([classId, subjId]) => {
+    const classEl = document.getElementById(classId);
+    if (!classEl) return;
+    
+    classEl.addEventListener('change', async function() {
+        const divId = this.value;
+        const sel = document.getElementById(subjId);
+        
+        // If "All" or nothing is selected, clear and reset subject dropdown
+        if (!divId) {
+            if (subjId !== 'att-subj-sel') sel.innerHTML = '<option value="">All</option>';
+            else sel.innerHTML = '<option value="" disabled selected>Select subject...</option>';
+            return;
+        }
+        
+        try {
+            const res = await apiFetch(`/attendance/division/${divId}/subjects`);
+            const subjects = await res.json();
+            
+            // For Take Attendance, we need the global attDivSubjects array
+            if (subjId === 'att-subj-sel') {
+                attDivSubjects = subjects;
+                sel.innerHTML = '<option value="" disabled selected>Select subject...</option>';
+            } else {
+                sel.innerHTML = '<option value="">All</option>';
+            }
+            
+            subjects.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s.id; o.textContent = s.name;
+                sel.appendChild(o);
+            });
+        } catch(e) { console.error('Failed to load subjects:', e); }
+    });
 });
 
 // ── Manage Tab: Division CRUD ─────────────────────────────────────────
