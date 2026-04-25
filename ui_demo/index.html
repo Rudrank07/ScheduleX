@@ -83,9 +83,16 @@
     <div id="login-overlay">
         <div class="login-card glass-card" id="login-form-box">
             <div class="login-brand-logo">S<span style="color:rgba(255,255,255,0.7)">X</span></div>
-            <div class="tabs" style="margin-bottom: 20px; display: flex; justify-content: space-between;">
-                <button class="tab-btn active" id="tab-teacher-login" style="width: 48%; padding: 8px;">Teacher Login</button>
-                <button class="tab-btn" id="tab-student-login" style="width: 48%; padding: 8px;">Student Login</button>
+            <div class="tabs" style="margin-bottom: 20px; display: flex; justify-content: space-between; gap: 6px;">
+                <button class="tab-btn active" id="tab-teacher-login" style="flex:1; padding: 8px; font-size:0.85rem;">
+                    <i class="fa-solid fa-chalkboard-user"></i> Teacher
+                </button>
+                <button class="tab-btn" id="tab-student-login" style="flex:1; padding: 8px; font-size:0.85rem;">
+                    <i class="fa-solid fa-user-graduate"></i> Student
+                </button>
+                <button class="tab-btn" id="tab-admin-login" style="flex:1; padding: 8px; font-size:0.85rem; border-color:rgba(253,203,110,0.3);">
+                    <i class="fa-solid fa-shield-halved"></i> Admin
+                </button>
             </div>
             <h2 id="login-title"><i class="fa-solid fa-chalkboard-user"></i> Teacher Gateway</h2>
             <input type="text" id="login-username" placeholder="Teacher Username" />
@@ -138,6 +145,10 @@
                 </li>
                 <li data-target="attendance-page" id="attendance-nav-item">
                     <i class="fa-solid fa-clipboard-user"></i><span>Attendance</span>
+                </li>
+                <li data-target="requests-page" id="requests-nav-item" style="display:none; position:relative;">
+                    <i class="fa-solid fa-user-clock"></i><span>Requests</span>
+                    <span id="requests-nav-dot" style="display:none;position:absolute;right:14px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:#fdcb6e;box-shadow:0 0 8px rgba(253,203,110,0.8);"></span>
                 </li>
                 <li data-target="admin-page" id="admin-nav-item" style="display:none;">
                     <i class="fa-solid fa-shield-halved"></i><span>Admin</span>
@@ -544,15 +555,12 @@
 
                 <!-- Attendance Page -->
                 <section id="attendance-page" class="page hidden">
-
-                    <!-- TEACHER VIEW -->
-                    <div id="att-teacher-view">
-                        <div class="tabs" id="att-main-tabs">
-                            <button class="tab-btn active" data-atab="att-take-tab">&#128203; Take Attendance</button>
-                            <button class="tab-btn" data-atab="att-records-tab">&#128196; Records</button>
-                            <button class="tab-btn" data-atab="att-report-tab">&#128202; Report</button>
-                            <button class="tab-btn" data-atab="att-manage-tab">&#9881; Setup</button>
-                        </div>
+                    <div class="tabs" id="att-main-tabs" style="margin-bottom: 20px;">
+                        <button class="tab-btn active" data-atab="att-take-tab"><i class="fa-solid fa-clipboard-check"></i> Take Attendance</button>
+                        <button class="tab-btn" data-atab="att-records-tab"><i class="fa-solid fa-folder-open"></i> Records</button>
+                        <button class="tab-btn" data-atab="att-report-tab"><i class="fa-solid fa-chart-pie"></i> Report</button>
+                        <button class="tab-btn" data-atab="att-manage-tab"><i class="fa-solid fa-users-gear"></i> Setup</button>
+                    </div>
 
                         <!-- TAKE ATTENDANCE (Simplified) -->
                         <div id="att-take-tab" class="att-tab-panel">
@@ -759,6 +767,47 @@
             <div id="att-view-list" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
         </div>
     </div>
+
+    <!-- ══════════════════════════════════════════════
+         REQUESTS PAGE (teacher + admin only)
+         ══════════════════════════════════════════════ -->
+    <section id="requests-page" class="page hidden" style="padding: 0 0 40px 0;">
+        <div style="display: grid; gap: 24px;">
+
+            <!-- ── Hero header card ── -->
+            <div class="requests-hero-card">
+                <div class="requests-hero-bg"></div>
+                <div class="requests-hero-content">
+                    <div class="requests-hero-icon">
+                        <i class="fa-solid fa-user-clock"></i>
+                    </div>
+                    <div>
+                        <h2 class="requests-hero-title">Student Signup Requests</h2>
+                        <p class="requests-hero-sub">Review and approve students waiting to join ScheduleX</p>
+                    </div>
+                    <div style="margin-left:auto; display:flex; align-items:center; gap:12px; flex-shrink:0;">
+                        <div id="requests-count-badge" class="requests-count-badge" style="display:none;">
+                            <span id="requests-count-num">0</span> Pending
+                        </div>
+                        <button class="btn-secondary" id="teacher-req-refresh-btn" style="padding:10px 20px; display:flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-rotate"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Request cards list ── -->
+            <div class="glass-card" style="padding: 28px;">
+                <div id="teacher-requests-list">
+                    <div class="admin-empty-state">
+                        <i class="fa-solid fa-inbox"></i>
+                        <p>No pending student requests</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
 
     <!-- ══════════════════════════════════════════════
          ADMIN PAGE  (only visible to admin role)

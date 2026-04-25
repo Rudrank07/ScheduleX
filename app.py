@@ -1226,9 +1226,20 @@ def get_class_roster(class_id):
     if not conn: return jsonify({'error':'Database connection failed'}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, student_name, student_roll FROM class_students WHERE att_div_id=? AND user_id=? ORDER BY CASE WHEN student_roll ~ '^[0-9]+$' THEN student_roll::int ELSE 999999 END, id",
-                       (class_id, user_id))
-        return jsonify(cursor.fetchall()), 200
+        # SQLite-compatible: cast roll to integer for numeric sort, fallback to 999999
+        cursor.execute("""
+            SELECT id, student_name, student_roll FROM class_students
+            WHERE att_div_id=? AND user_id=?
+            ORDER BY
+                CASE WHEN TRIM(student_roll) GLOB '[0-9]*'
+                          AND TRIM(student_roll) != ''
+                     THEN CAST(student_roll AS INTEGER)
+                     ELSE 999999
+                END,
+                id
+        """, (class_id, user_id))
+        rows = cursor.fetchall()
+        return jsonify([dict(r) for r in rows]), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
     finally:
         _close(conn, cursor)
@@ -1246,11 +1257,72 @@ def save_class_roster(class_id):
         cursor = conn.cursor()
         cursor.execute("DELETE FROM class_students WHERE att_div_id=? AND user_id=?", (class_id, user_id))
         for st in data['students']:
-            cursor.execute("INSERT INTO class_students (att_div_id,student_name,student_roll,user_id) VALUES(?,?,?,?)",
-                           (class_id, st['name'], st.get('roll',''), user_id))
+            name = st.get('name', '').strip()
+            if not name:
+                continue  # skip blank entries
+            cursor.execute(
+                "INSERT INTO class_students (att_div_id, student_name, student_roll, user_id) VALUES (?,?,?,?)",
+                (class_id, name, str(st.get('roll', '')), user_id)
+            )
         conn.commit()
         return jsonify({'success': True, 'count': len(data['students'])}), 200
-    except Exception as e: return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        _close(conn, cursor)
+
+
+# ── Teacher: view & approve STUDENT-only signup requests ─────────────────────
+@app.route('/teacher/student_requests', methods=['GET'])
+def teacher_get_student_requests():
+    """Any logged-in teacher/admin can view pending STUDENT signup requests."""
+    user_id, err = require_user_id()
+    if err: return err
+    conn = get_db_connection()
+    if not conn: return jsonify({'error': 'Database connection failed'}), 500
+    try:
+        cursor = conn.cursor()
+        # Only return student role requests
+        cursor.execute(
+            "SELECT id, username, role, requested_at FROM signup_requests WHERE role='student' ORDER BY requested_at DESC"
+        )
+        rows = cursor.fetchall()
+        return jsonify([dict(r) for r in rows]), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        _close(conn, cursor)
+
+
+@app.route('/teacher/approve_student/<int:req_id>', methods=['POST'])
+def teacher_approve_student(req_id):
+    """Teacher can approve a student signup request (student role only)."""
+    user_id, err = require_user_id()
+    if err: return err
+    conn = get_db_connection()
+    if not conn: return jsonify({'error': 'Database connection failed'}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT username, password, role FROM signup_requests WHERE id=? AND role='student'",
+            (req_id,)
+        )
+        req = cursor.fetchone()
+        if not req:
+            return jsonify({'error': 'Student request not found'}), 404
+        try:
+            cursor.execute(
+                "INSERT INTO admins (username, password, role) VALUES (?, ?, ?)",
+                (req['username'], req['password'], 'student')
+            )
+        except sqlite3.IntegrityError:
+            return jsonify({'error': 'Username already exists'}), 409
+        cursor.execute("DELETE FROM signup_requests WHERE id=?", (req_id,))
+        conn.commit()
+        return jsonify({'success': True, 'message': f"{req['username']} approved as student"}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
     finally:
         _close(conn, cursor)
 

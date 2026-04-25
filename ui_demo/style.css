@@ -3276,3 +3276,136 @@ table td.day-sat { border-right-color: rgba(116,185,255,0.06); }
     box-shadow: 0 0 8px rgba(253,203,110,0.7);
     animation: glowPulse 2s ease-in-out infinite;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   REQUESTS PAGE — Dedicated Student Approval Section
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Sidebar nav item ────────────────────────────────────────── */
+#requests-nav-item {
+    position: relative;
+}
+#requests-nav-item i {
+    color: #fdcb6e !important;
+}
+#requests-nav-item.active {
+    background: linear-gradient(90deg, rgba(253,203,110,0.12), transparent);
+}
+
+/* ── Page entry animation ────────────────────────────────────── */
+#requests-page {
+    animation: reqPageIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes reqPageIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Hero Card ───────────────────────────────────────────────── */
+.requests-hero-card {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    padding: 32px 32px;
+    border: 1px solid rgba(253,203,110,0.2);
+    background: rgba(253,203,110,0.04);
+    animation: reqPageIn 0.35s ease both;
+}
+
+.requests-hero-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        135deg,
+        rgba(253,203,110,0.10) 0%,
+        rgba(253,121,168,0.06) 50%,
+        rgba(124,110,245,0.08) 100%
+    );
+    background-size: 300% 300%;
+    animation: heroShift 8s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes heroShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.requests-hero-content {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.requests-hero-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 18px;
+    background: rgba(253,203,110,0.15);
+    border: 1px solid rgba(253,203,110,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #fdcb6e;
+    flex-shrink: 0;
+    animation: iconFloat 3s ease-in-out infinite;
+    box-shadow: 0 0 20px rgba(253,203,110,0.15);
+}
+@keyframes iconFloat {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-5px); }
+}
+
+.requests-hero-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0 0 6px;
+    color: var(--dark);
+    letter-spacing: -0.3px;
+}
+
+.requests-hero-sub {
+    margin: 0;
+    color: rgba(220,220,235,0.45);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
+/* ── Count badge ─────────────────────────────────────────────── */
+.requests-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 30px;
+    background: rgba(253,203,110,0.15);
+    border: 1px solid rgba(253,203,110,0.4);
+    color: #fdcb6e;
+    font-weight: 700;
+    font-size: 0.88rem;
+    animation: glowPulse 2.5s ease-in-out infinite;
+}
+.requests-count-badge #requests-count-num {
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+/* ── Stagger animation for request cards ─────────────────────── */
+#teacher-requests-list .admin-req-card:nth-child(1) { animation-delay: 0.05s; }
+#teacher-requests-list .admin-req-card:nth-child(2) { animation-delay: 0.10s; }
+#teacher-requests-list .admin-req-card:nth-child(3) { animation-delay: 0.15s; }
+#teacher-requests-list .admin-req-card:nth-child(4) { animation-delay: 0.20s; }
+#teacher-requests-list .admin-req-card:nth-child(5) { animation-delay: 0.25s; }
+#teacher-requests-list .admin-req-card:nth-child(n+6) { animation-delay: 0.30s; }
+
+/* ── Refresh button spin on click ────────────────────────────── */
+#teacher-req-refresh-btn.spinning i {
+    animation: spin360 0.6s linear;
+}
+@keyframes spin360 {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
