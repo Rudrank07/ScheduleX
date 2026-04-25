@@ -2496,41 +2496,7 @@ document.getElementById('att-rpt-btn').addEventListener('click', async () => {
     } catch(e) { showToast('Error: ' + e, 'error'); }
 });
 
-// ── Student view ──────────────────────────────────────────────────────
-async function loadStudentAttendance() {
-    try {
-        const res = await apiFetch('/attendance/sessions/public');
-        const rows = await res.json();
-        const tbody = document.getElementById('att-student-tbody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:rgba(220,220,235,0.4);">No published sessions yet.</td></tr>';
-            return;
-        }
-        rows.forEach(s => {
-            const pct = s.total_students ? Math.round(s.present_count / s.total_students * 100) : 0;
-            const color = pct >= 75 ? '#00b894' : pct >= 50 ? '#fdcb6e' : '#e05252';
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td><b>${s.date}</b></td><td>${s.class_name}</td><td>${s.subject_name}</td>
-                <td>${s.teacher_name || '—'}</td>
-                <td style="text-align:center;color:#00b894;"><b>${s.present_count}</b></td>
-                <td style="text-align:center;">${s.total_students}</td>
-                <td style="text-align:center;"><button class="btn-primary" style="padding:5px 12px;font-size:0.8rem;" onclick="attViewSession(${s.id})"><i class="fa-solid fa-eye"></i> View</button></td>`;
-            tbody.appendChild(tr);
-        });
-    } catch(e) { console.error(e); }
-}
-
-// ── Student sub-tabs ──────────────────────────────────────────────────
-document.querySelectorAll('#att-student-tabs .tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('#att-student-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.querySelectorAll('#att-student-view .att-tab-panel').forEach(p => p.classList.add('hidden'));
-        document.getElementById(btn.getAttribute('data-stab')).classList.remove('hidden');
-    });
-});
+// ── Student view (My Report Only) ───────────────────────────────────────
 
 // ── My Report ─────────────────────────────────────────────────────────
 document.getElementById('att-my-report-btn').addEventListener('click', async () => {
@@ -2658,7 +2624,7 @@ document.getElementById('attendance-nav-item').addEventListener('click', () => {
     if (role === 'student') {
         document.getElementById('att-teacher-view').classList.add('hidden');
         document.getElementById('att-student-view').classList.remove('hidden');
-        loadStudentAttendance();
+
     } else {
         document.getElementById('att-teacher-view').classList.remove('hidden');
         document.getElementById('att-student-view').classList.add('hidden');
