@@ -1062,20 +1062,29 @@ def get_attendance_report():
     try:
         cursor = conn.cursor()
         filters, params = ["a.user_id=?"], [user_id]
-        if request.args.get('class_id'):   filters.append("a.class_id=?");   params.append(request.args['class_id'])
-        if request.args.get('subject_id'): filters.append("a.subject_id=?"); params.append(request.args['subject_id'])
+        if request.args.get('class_id'):   
+            filters.append("(a.class_id=? OR a.att_div_id=?)")
+            params.extend([request.args['class_id'], request.args['class_id']])
+        if request.args.get('subject_id'): 
+            filters.append("(a.subject_id=? OR a.att_subject_id=?)")
+            params.extend([request.args['subject_id'], request.args['subject_id']])
         where = " AND ".join(filters)
         cursor.execute(f"""
-            SELECT r.student_name, c.class_name, s.name AS subject_name,
+            SELECT r.student_name, 
+                   COALESCE(d.name, c.class_name, 'N/A') AS class_name, 
+                   COALESCE(ds.name, s.name, 'N/A') AS subject_name,
                    COUNT(*) AS total, SUM(r.status='present') AS present_count,
                    SUM(r.status='absent') AS absent_count, SUM(r.status='late') AS late_count,
-                   ROUND(SUM(r.status='present')/COUNT(*)*100,1) AS pct
+                   ROUND(SUM(r.status='present')*100.0/COUNT(*),1) AS pct
             FROM attendance_records r
             JOIN attendance_sessions a ON r.session_id=a.id
-            JOIN classes c ON a.class_id=c.id JOIN subjects s ON a.subject_id=s.id
+            LEFT JOIN att_divisions d ON a.att_div_id=d.id
+            LEFT JOIN att_div_subjects ds ON a.att_subject_id=ds.id
+            LEFT JOIN classes c ON a.class_id=c.id 
+            LEFT JOIN subjects s ON a.subject_id=s.id
             WHERE {where}
-            GROUP BY r.student_name, a.subject_id, a.class_id
-            ORDER BY c.class_name, s.name, r.student_name
+            GROUP BY r.student_name, COALESCE(a.att_subject_id, a.subject_id), COALESCE(a.att_div_id, a.class_id)
+            ORDER BY class_name, subject_name, r.student_name
         """, tuple(params))
         return jsonify(cursor.fetchall()), 200
     except Exception as e:
@@ -1093,13 +1102,18 @@ def get_public_attendance():
     try:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT a.id, a.date, c.class_name, s.name AS subject_name, a.total_students,
+            SELECT a.id, a.date, 
+                   COALESCE(d.name, c.class_name, 'N/A') AS class_name, 
+                   COALESCE(ds.name, s.name, 'N/A') AS subject_name, 
+                   a.total_students,
                    adm.username AS teacher_name,
                    COALESCE(SUM(r.status='present'),0) AS present_count,
                    COALESCE(SUM(r.status='absent'),0)  AS absent_count
             FROM attendance_sessions a
-            JOIN classes c ON a.class_id=c.id
-            JOIN subjects s ON a.subject_id=s.id
+            LEFT JOIN att_divisions d ON a.att_div_id=d.id
+            LEFT JOIN att_div_subjects ds ON a.att_subject_id=ds.id
+            LEFT JOIN classes c ON a.class_id=c.id
+            LEFT JOIN subjects s ON a.subject_id=s.id
             JOIN admins adm ON a.user_id=adm.id
             LEFT JOIN attendance_records r ON r.session_id=a.id
             WHERE a.is_published=1
@@ -1353,20 +1367,24 @@ def student_attendance_report():
     try:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT s.name AS subject_name, c.class_name,
+            SELECT COALESCE(ds.name, s.name, 'N/A') AS subject_name, 
+                   COALESCE(d.name, c.class_name, 'N/A') AS class_name,
                    COUNT(*) AS total,
                    SUM(CASE WHEN r.status='present' THEN 1 ELSE 0 END) AS present_count,
                    SUM(CASE WHEN r.status='absent' THEN 1 ELSE 0 END) AS absent_count,
                    SUM(CASE WHEN r.status='late' THEN 1 ELSE 0 END) AS late_count,
-                   ROUND(SUM(CASE WHEN r.status='present' THEN 1 ELSE 0 END)::numeric/COUNT(*)*100,1) AS pct,
+                   ROUND(SUM(CASE WHEN r.status='present' THEN 1 ELSE 0 END)*100.0/COUNT(*),1) AS pct,
                    MAX(a.date) AS last_date
             FROM attendance_records r
             JOIN attendance_sessions a ON r.session_id=a.id
-            JOIN subjects s ON a.subject_id=s.id
-            JOIN classes  c ON a.class_id=c.id
-            WHERE r.student_name=? AND a.is_published=1
-            GROUP BY a.subject_id, a.class_id ORDER BY c.class_name, s.name
-        """, (name,))
+            LEFT JOIN att_divisions d ON a.att_div_id=d.id
+            LEFT JOIN att_div_subjects ds ON a.att_subject_id=ds.id
+            LEFT JOIN subjects s ON a.subject_id=s.id
+            LEFT JOIN classes  c ON a.class_id=c.id
+            WHERE r.student_name LIKE ? AND a.is_published=1
+            GROUP BY COALESCE(a.att_subject_id, a.subject_id), COALESCE(a.att_div_id, a.class_id)
+            ORDER BY class_name, subject_name
+        """, (f"%{name}%",))
         rows = cursor.fetchall()
         for row in rows:
             if row['last_date']: row['last_date'] = str(row['last_date'])[:10]

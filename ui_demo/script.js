@@ -1643,17 +1643,44 @@ document.getElementById('export-pdf').addEventListener('click', () => {
         showToast("No timetable available to download!", 'warning');
         return;
     }
-    const element = document.getElementById('timetable');
+    
+    // Get class name
+    const sel = document.getElementById('view-class-select');
+    const className = sel.options[sel.selectedIndex]?.text || 'Class';
+    
+    // Create wrapper with dark theme background and a title
+    const wrapper = document.createElement('div');
+    wrapper.style.padding = '30px';
+    wrapper.style.background = '#0a0a10';
+    wrapper.style.color = '#dcdce8';
+    wrapper.style.fontFamily = 'Inter, sans-serif';
+    // Must be in DOM for html2canvas to render correctly, but we hide it off-screen
+    wrapper.style.position = 'absolute';
+    wrapper.style.left = '-9999px';
+    wrapper.style.top = '-9999px';
+    
+    const title = document.createElement('h2');
+    title.textContent = `Timetable: ${className}`;
+    title.style.marginBottom = '20px';
+    title.style.color = '#7C6EF5'; // primary color
+    title.style.textAlign = 'center';
+    wrapper.appendChild(title);
+    
+    const tableClone = document.getElementById('timetable').cloneNode(true);
+    wrapper.appendChild(tableClone);
+    document.body.appendChild(wrapper);
     
     const opt = {
         margin:       0.5,
-        filename:     'timetable.pdf',
+        filename:     `Timetable_${className.replace(/\s+/g, '_')}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
+        html2canvas:  { scale: 2, backgroundColor: '#0a0a10' },
         jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
     };
     
-    html2pdf().set(opt).from(element).save();
+    html2pdf().set(opt).from(wrapper).save().then(() => {
+        document.body.removeChild(wrapper);
+    });
 });
 
 document.getElementById('export-excel').addEventListener('click', () => {
@@ -1663,9 +1690,14 @@ document.getElementById('export-excel').addEventListener('click', () => {
         showToast("No timetable available to download!", 'warning');
         return;
     }
+    
+    const sel = document.getElementById('view-class-select');
+    const className = sel.options[sel.selectedIndex]?.text || 'Class';
+    
     const table = document.getElementById('timetable');
-    const wb = XLSX.utils.table_to_book(table, {sheet: "Timetable"});
-    XLSX.writeFile(wb, 'timetable.xlsx');
+    // Add title row to excel
+    const wb = XLSX.utils.table_to_book(table, {sheet: className.substring(0, 31)});
+    XLSX.writeFile(wb, `Timetable_${className.replace(/\s+/g, '_')}.xlsx`);
 });
 
 // History Controls
@@ -1934,21 +1966,47 @@ async function attPopulateDropdowns() {
     // Subject dropdowns will be populated when a division is selected
 }
 
-// ── When division is selected in Take Attendance, load its subjects ───
-document.getElementById('att-class-sel').addEventListener('change', async function() {
-    const divId = this.value;
-    if (!divId) return;
-    try {
-        const res = await apiFetch(`/attendance/division/${divId}/subjects`);
-        attDivSubjects = await res.json();
-        const sel = document.getElementById('att-subj-sel');
-        sel.innerHTML = '<option value="" disabled selected>Select subject...</option>';
-        attDivSubjects.forEach(s => {
-            const o = document.createElement('option');
-            o.value = s.id; o.textContent = s.name;
-            sel.appendChild(o);
-        });
-    } catch(e) { console.error(e); }
+// ── Dynamically load subjects when a division is selected ───────────────
+const attClassSubjMap = {
+    'att-class-sel': 'att-subj-sel', // Take Attendance Tab
+    'att-flt-class': 'att-flt-subj', // Records Tab
+    'att-rpt-class': 'att-rpt-subj'  // Report Tab
+};
+
+Object.entries(attClassSubjMap).forEach(([classId, subjId]) => {
+    const classEl = document.getElementById(classId);
+    if (!classEl) return;
+    
+    classEl.addEventListener('change', async function() {
+        const divId = this.value;
+        const sel = document.getElementById(subjId);
+        
+        // If "All" or nothing is selected, clear and reset subject dropdown
+        if (!divId) {
+            if (subjId !== 'att-subj-sel') sel.innerHTML = '<option value="">All</option>';
+            else sel.innerHTML = '<option value="" disabled selected>Select subject...</option>';
+            return;
+        }
+        
+        try {
+            const res = await apiFetch(`/attendance/division/${divId}/subjects`);
+            const subjects = await res.json();
+            
+            // For Take Attendance, we need the global attDivSubjects array
+            if (subjId === 'att-subj-sel') {
+                attDivSubjects = subjects;
+                sel.innerHTML = '<option value="" disabled selected>Select subject...</option>';
+            } else {
+                sel.innerHTML = '<option value="">All</option>';
+            }
+            
+            subjects.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s.id; o.textContent = s.name;
+                sel.appendChild(o);
+            });
+        } catch(e) { console.error('Failed to load subjects:', e); }
+    });
 });
 
 // ── Manage Tab: Division CRUD ─────────────────────────────────────────
@@ -2264,8 +2322,11 @@ function attRenderMarkGrid(gridId, students, isEdit) {
         card.querySelectorAll('.att-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 students[i].status = btn.dataset.status;
+                
+                // ONLY update the clicked card's DOM instead of re-rendering everything
                 card.className = `att-card att-${btn.dataset.status}`;
                 card.querySelectorAll('.att-btn').forEach(b => b.classList.toggle('active', b === btn));
+                
                 if (!isEdit) attUpdateCounters();
                 else attUpdateEditCounters(students, gridId);
             });
@@ -2467,41 +2528,7 @@ document.getElementById('att-rpt-btn').addEventListener('click', async () => {
     } catch(e) { showToast('Error: ' + e, 'error'); }
 });
 
-// ── Student view ──────────────────────────────────────────────────────
-async function loadStudentAttendance() {
-    try {
-        const res = await apiFetch('/attendance/sessions/public');
-        const rows = await res.json();
-        const tbody = document.getElementById('att-student-tbody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:rgba(220,220,235,0.4);">No published sessions yet.</td></tr>';
-            return;
-        }
-        rows.forEach(s => {
-            const pct = s.total_students ? Math.round(s.present_count / s.total_students * 100) : 0;
-            const color = pct >= 75 ? '#00b894' : pct >= 50 ? '#fdcb6e' : '#e05252';
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td><b>${s.date}</b></td><td>${s.class_name}</td><td>${s.subject_name}</td>
-                <td>${s.teacher_name || '—'}</td>
-                <td style="text-align:center;color:#00b894;"><b>${s.present_count}</b></td>
-                <td style="text-align:center;">${s.total_students}</td>
-                <td style="text-align:center;"><button class="btn-primary" style="padding:5px 12px;font-size:0.8rem;" onclick="attViewSession(${s.id})"><i class="fa-solid fa-eye"></i> View</button></td>`;
-            tbody.appendChild(tr);
-        });
-    } catch(e) { console.error(e); }
-}
-
-// ── Student sub-tabs ──────────────────────────────────────────────────
-document.querySelectorAll('#att-student-tabs .tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('#att-student-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.querySelectorAll('#att-student-view .att-tab-panel').forEach(p => p.classList.add('hidden'));
-        document.getElementById(btn.getAttribute('data-stab')).classList.remove('hidden');
-    });
-});
+// ── Student view (My Report Only) ───────────────────────────────────────
 
 // ── My Report ─────────────────────────────────────────────────────────
 document.getElementById('att-my-report-btn').addEventListener('click', async () => {
@@ -2629,7 +2656,7 @@ document.getElementById('attendance-nav-item').addEventListener('click', () => {
     if (role === 'student') {
         document.getElementById('att-teacher-view').classList.add('hidden');
         document.getElementById('att-student-view').classList.remove('hidden');
-        loadStudentAttendance();
+
     } else {
         document.getElementById('att-teacher-view').classList.remove('hidden');
         document.getElementById('att-student-view').classList.add('hidden');
